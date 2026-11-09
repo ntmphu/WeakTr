@@ -169,6 +169,9 @@ CenterPoints/exp_run.sh
 colorful.py
 data/coco
 data/voc12
+/data/weights/
+/data/.downloads/
+/data/preparation.json
 mlruns/*
 OnlineRetraining/mlruns
 OnlineRetraining/start*

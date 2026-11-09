@@ -1,8 +1,39 @@
 # Kaggle execution and recovery
 
-Implementation is ready for runtime acceptance, which is **pending**. Local verification uses Python 3.12, PyTorch 2.3.1+cpu and NumPy 1.26.4. It does not establish Kaggle/CUDA compatibility. No datasets were downloaded, training launched, or reproduction metrics measured during implementation.
+The common workflow is **import notebook or clone code -> attach private input dataset -> run setup -> optional pilot -> train/evaluate -> save a resumable run**. Code belongs in Git; datasets, ImageNet weights and saved training outputs belong in private Kaggle datasets or notebook outputs. Local work prepares code/notebooks/input bundles and runs CPU checks. GPU/runtime compatibility is claimed only after actually measured in that runtime.
 
-Open `WeakTr_Kaggle.ipynb`. Its setup/preflight/training/evaluation cells have independent switches, initially disabled. Clone this branch into `/kaggle/working/WeakTr`; attach VOC data and the official ImageNet DeiT-S checkpoint. Prepare with the accelerator disabled. The notebook creates an isolated Python 3.10 environment with candidate Torch 1.13.1+cu117/TorchVision 0.14.1+cu117 and `reproduction/requirements-kaggle.txt`. These versions are candidates until both stages pass; preserve the resolved package freeze, including the pydensecrf source commit. The initial CPU mmcv package choice still needs dataset import/operator acceptance. Apex/xformers are loaded only for EVA backbones; DeiT-S computations are unchanged.
+VS Code's remote Jupyter connection is the same execution workflow, not a second implementation. Open the local notebook and choose **Select Kernel -> Select Another Kernel -> Existing Jupyter Server**, then enter the running Kaggle server's URL. The notebook stays on your PC, while code cells and subprocesses execute in Kaggle and use Kaggle's filesystem. Windows files are not implicitly uploaded. The first cell checks that it is running on Kaggle and clones/updates the reproduction code there; attached inputs and saved runs are discovered remotely. Separate local Python edits must be committed/pushed before updating the remote checkout. Do not treat a browser-only VS Code tunnel as a Jupyter server URL. Reference: https://code.visualstudio.com/docs/datascience/jupyter-kernel-management#_existing-jupyter-server
+
+Open `WeakTr_Kaggle.ipynb`. It clones the reproduction branch if needed and has one configuration cell: `INPUTS`, `RESUME_FROM` and `PILOT`. No manual acceptance flags or forecast variables block normal training. `PILOT = False` runs the full original pipeline; `True` runs synthetic checks for both stages and one complete Phase-1 epoch, then stops. Set it back to false to continue from that checkpoint. The full schedules, seed, data protocol and compute spending boundaries are unchanged.
+
+## First use
+
+1. Upload `data/voc12/weaktr-kaggle-inputs.zip` as a **private Kaggle dataset**, with the ZIP extracted. This prepared bundle contains only required VOC inputs, exact split files, verified ImageNet weights, and a payload-hash manifest. The raw archives and heavy data are never added to Git.
+2. Import `WeakTr_Kaggle.ipynb` and attach that private dataset. Enable Internet for code/package installation. The dataset's name does not matter; setup discovers its manifest automatically.
+3. Run configuration and setup. Setup copies verified inputs to runtime-local disk and installs an isolated Python 3.10 environment. It checks both trainer imports, CRF, focused CPU tests and the real dataset. Run this preparation with the accelerator disabled where possible; the subprocess also hides CUDA during setup.
+4. Run the remaining cells with one GPU. Optionally set `PILOT = True` first. No full schedule is shortened implicitly.
+5. Download `/kaggle/working/weaktr-resume.zip` after training, or preserve it in notebook-version outputs. Attach its extracted contents as a private dataset in the next session, together with the original input dataset.
+
+`RESUME_FROM = 'auto'` prefers checkpoints already on working disk, otherwise discovers one attached saved run, otherwise starts fresh. Set it to `'none'` for a fresh empty run or to a specific saved-run directory when several are attached. Restored payload hashes are checked, and training restores optimizer/scheduler/scaler/RNG/selection state. Existing different working artifacts are preserved with a clear error rather than overwritten.
+
+The candidate environment is Torch 1.13.1+cu117/TorchVision 0.14.1+cu117, binary `mmcv-full==1.7.1` from OpenMMLab's matching wheel index, and `reproduction/requirements-kaggle.txt`. Package installation does not compile CUDA operators. These versions remain candidates until runtime acceptance; preserve the package freeze and resolved pydensecrf source commit. Apex/xformers are loaded only for EVA backbones; DeiT-S computations are unchanged.
+
+The same workflow can be invoked from a cloned repository in Kaggle:
+
+```bash
+python reproduction/kaggle.py prepare
+python reproduction/kaggle.py smoke         # optional
+python reproduction/kaggle.py phase1-pilot  # optional; retains full scheduler
+python reproduction/kaggle.py phase1        # starts or resumes full schedule
+python reproduction/kaggle.py cams
+python reproduction/kaggle.py pseudo
+python reproduction/kaggle.py phase2
+python reproduction/kaggle.py evaluate
+python reproduction/kaggle.py crf
+python reproduction/kaggle.py preserve
+```
+
+Training commands export a fresh resumable archive on completion and on a catchable interruption when a completed checkpoint exists. After a hard runtime termination, the latest completed checkpoint still needs to be recovered from saved runtime outputs; the export cannot run after the process is killed. The export contains latest/previous/best checkpoints, variant/config files, logs and pseudo-labels, excluding intermediate CAM/probability collections. Phase 2 reuses complete restored pseudo-labels instead of regenerating CAMs. GPU recovery comparisons and author-checkpoint evaluation remain verification tasks; an optional pilot does not silently mark them passed.
 
 The walkthrough is now `WeakTr_explained.ipynb`; its educational reimplementation is separate from training acceptance. Its cache defaults to the external sibling `../weaktr_cache`, overridable with `WEAKTR_CACHE`. The external notebook remains preserved. Repository-relative `models.py`, `voc12/cls_labels.npy`, `img/` and dataset candidate paths have been checked; full notebook execution remains pending.
 
@@ -27,9 +58,9 @@ Run from repository root, using the isolated environment's Python. Substitute ab
 
 ```bash
 python -m pytest tests/test_reproduction.py -q
-python -m reproduction.launch preflight --data /kaggle/working/data --output /kaggle/working/weaktr-artifacts --pretrained /kaggle/input/weaktr-inputs/deit_small_patch16_224.pth
-python -m reproduction.smoke --pretrained /kaggle/input/weaktr-inputs/deit_small_patch16_224.pth --record /kaggle/working/weaktr-artifacts/gpu-smoke.json
-python -m reproduction.launch phase1 --data /kaggle/working/data --output /kaggle/working/weaktr-artifacts --pretrained /kaggle/input/weaktr-inputs/deit_small_patch16_224.pth --stop-after-epoch 1
+python -m reproduction.launch preflight --data /kaggle/working/data --output /kaggle/working/weaktr-artifacts --pretrained /kaggle/working/weights/deit_small_patch16_224.pth
+python -m reproduction.smoke --pretrained /kaggle/working/weights/deit_small_patch16_224.pth --record /kaggle/working/weaktr-artifacts/gpu-smoke.json
+python -m reproduction.launch phase1 --data /kaggle/working/data --output /kaggle/working/weaktr-artifacts --pretrained /kaggle/working/weights/deit_small_patch16_224.pth --stop-after-epoch 1
 ```
 
 All launcher stages accept `--data`, `--output`, `--pretrained`, `--seed` (504) and optional `--resume`. Invoke `phase1`, `cams`, `pseudo`, `phase2`, `evaluate`, `crf` separately in that order. `--pretrained` must hash to the published official DeiT-S SHA256 prefix `cd65a155`; it cannot silently substitute author WeakTr weights. Full hashes, dataset-list hashes, Git revision, resolved command/configuration, versions, GPU, session times and logs are preserved under output directories. Pin the accepted environment after checks pass.
@@ -72,4 +103,4 @@ For Phase 2, download its matching variant file beside the author checkpoint. Fr
 python -m segm.eval.miou --backbone multi --weight 0.8 --multiscale --predict-dir /kaggle/working/author-reference/seg_prob_ms /kaggle/working/author-reference/checkpoint.pth pascal_voc
 ```
 
-Record checkpoint URLs, hashes, exact commands, measured scores and elapsed costs. Both GPU forward/backward checks, full-size batch acceptance, GPU recovery comparisons, and author-checkpoint evaluation must pass before long production runs. Final reports need raw and post-CRF scores, per-class IoU, selected figures, time consumed and deviations; audit a final gap over one percentage point before considering retraining.
+Record checkpoint URLs, hashes, exact commands, measured scores and elapsed costs. The user clarified that pilot checks are optional and normal training should not require manually toggling acceptance/forecast flags. GPU forward/backward checks, full-size batch acceptance, GPU recovery comparisons, and author-checkpoint evaluation remain necessary evidence for declaring the workflow verified. Final reports need raw and post-CRF scores, per-class IoU, selected figures, time consumed and deviations; audit a final gap over one percentage point before considering retraining.

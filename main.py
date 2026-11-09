@@ -413,7 +413,8 @@ def main(args):
     max_max_mIoU = best['max_max_mIoU']
     max_epoch = best['max_epoch']
 
-    for epoch in range(args.start_epoch, args.epochs):
+    end_epoch = min(args.epochs, args.stop_after_epoch) if args.stop_after_epoch is not None else args.epochs
+    for epoch in range(args.start_epoch, end_epoch):
         train_stats = train_one_epoch(
             model, data_loader_train, optimizer, device, epoch, loss_scaler,
             args.clip_grad)

@@ -90,7 +90,7 @@ def main():
     voc = data / 'voc12/VOCdevkit/VOC2012'
     pseudo = output / 'pseudo'
     validation = validate_voc(voc, ROOT / 'voc12/train_aug_id.txt', ROOT / 'voc12/val_id.txt',
-                              pseudo if args.stage == 'phase2' else None)
+                              pseudo if args.stage == 'phase2' else None, progress=True)
     # mmseg consumes these files rather than the repository lists. Require exact order.
     for local, runtime in [('train_aug_id.txt', 'trainaug.txt'), ('val_id.txt', 'val.txt')]:
         if read_ids(ROOT / 'voc12' / local) != read_ids(voc / 'ImageSets/Segmentation' / runtime):

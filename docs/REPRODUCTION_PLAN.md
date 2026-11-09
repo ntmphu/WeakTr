@@ -82,6 +82,8 @@ The deliverable is a repeatable experiment with honest measured results. Matchin
 
 ## Current checklist and results
 
+Workflow clarification (2026-11-09): the user expects notebook import or Git clone plus private Kaggle input/saved-run datasets. Setup and checkpoint restoration are automatic; a first-run pilot is optional. Normal training does not depend on manual acceptance/forecast variables. GPU verification and reference-evaluation results remain pending evidence, not assumed achievements. Original schedules and compute limits remain in force.
+
 - [x] Fork connected and reproduction branch pushed.
 - [x] Plan, context, and agent guidance saved.
 - [x] Candidate isolated environment and Kaggle notebook implemented (GPU compatibility pending).
@@ -95,8 +97,9 @@ The deliverable is a repeatable experiment with honest measured results. Matchin
 
 | Measurement | Value |
 | --- | --- |
-| Local focused tests | 11 passed; CPU only, `python -m pytest tests/test_reproduction.py -q --tb=short` |
+| Local focused tests | 20 passed; CPU only, `python -m pytest tests -q --tb=short`, including input/saved-run transfer round trips and interrupted restore |
 | Notebook/static validation | Both notebooks validate; every code cell compiles; old outputs cleared |
+| Local VOC data validation | All 10,582 train and 1,449 val pairs pass decoding, dimensions, class IDs, split counts and disjointness; Kaggle transfer/preflight pending |
 | Measured GPU hours | Not measured |
 | Phase-1 CAM mIoU | Not measured; README reference 69.4% |
 | Raw validation mIoU | Not measured |

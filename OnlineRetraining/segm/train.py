@@ -352,7 +352,8 @@ def main(
     printd(f"Encoder parameters: {num_params(model_without_ddp.encoder)}")
     printd(f"Decoder parameters: {num_params(model_without_ddp.decoder)}")
 
-    for epoch in range(start_epoch, num_epochs):
+    end_epoch = min(num_epochs, stop_after_epoch) if stop_after_epoch is not None else num_epochs
+    for epoch in range(start_epoch, end_epoch):
         # train for one epoch
         train_logger = train_one_epoch(
             model,

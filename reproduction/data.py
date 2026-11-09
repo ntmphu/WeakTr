@@ -1,5 +1,6 @@
 """Strict VOC checks, without importing either training stack."""
 import hashlib
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import numpy as np
@@ -32,8 +33,8 @@ def annotation_fingerprint(directory, ids):
     return digest.hexdigest()
 
 
-def validate_masks(ids, images, masks):
-    for name in ids:
+def validate_masks(ids, images, masks, progress=False):
+    def validate_one(name):
         image_path, mask_path = Path(images) / (name + '.jpg'), Path(masks) / (name + '.png')
         with Image.open(image_path) as image:
             image.load()
@@ -45,22 +46,27 @@ def validate_masks(ids, images, masks):
                 raise ValueError(f'Mask dimensions mismatch: {mask_path}')
             if not np.isin(labels, list(range(21)) + [255]).all():
                 raise ValueError(f'Invalid class IDs: {mask_path}')
+    # Independent image decoding/IO can overlap; training loaders are unchanged.
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        for index, _ in enumerate(executor.map(validate_one, ids), 1):
+            if progress and (index % 1000 == 0 or index == len(ids)):
+                print(f'Validated {index}/{len(ids)} image/mask pairs in {masks}', flush=True)
 
 
-def validate_voc(root, train_list, val_list, pseudo_dir=None, expected=(10582, 1449)):
+def validate_voc(root, train_list, val_list, pseudo_dir=None, expected=(10582, 1449), progress=False):
     root = Path(root).resolve()
     train, val = read_ids(train_list, expected[0]), read_ids(val_list, expected[1])
     if set(train) & set(val):
         raise ValueError('Training and validation IDs overlap.')
     images = root / 'JPEGImages'
-    validate_masks(train, images, root / 'SegmentationClassAug')
-    validate_masks(val, images, root / 'SegmentationClassAug')
+    validate_masks(train, images, root / 'SegmentationClassAug', progress)
+    validate_masks(val, images, root / 'SegmentationClassAug', progress)
     # Official CAM selection uses train_id and augmented GT; test those IDs too.
     if pseudo_dir is not None:
         pseudo_dir = Path(pseudo_dir).resolve()
         if pseudo_dir in (root / 'SegmentationClass', root / 'SegmentationClassAug'):
             raise ValueError('Phase 2 requires generated pseudo-labels, not ground-truth annotations.')
-        validate_masks(train, images, pseudo_dir)
+        validate_masks(train, images, pseudo_dir, progress)
     return dict(train_count=len(train), val_count=len(val),
                 train_list_sha256=sha256(train_list), val_list_sha256=sha256(val_list),
                 pseudo_dir=str(pseudo_dir) if pseudo_dir else None)

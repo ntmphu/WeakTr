@@ -21,10 +21,11 @@ Read `docs/PROJECT_CONTEXT.md` and `docs/REPRODUCTION_PLAN.md` before work.
 
 - Before changes: `git status --short --branch` and `git remote -v`.
 - Before committing: `git diff --check`; run focused tests for checkpoint recovery, data validation, and IoU once implemented. Document exact runnable test commands here as tools are added.
-- CPU checks: `python -m pytest tests/test_reproduction.py -q`. GPU acceptance: `python -m reproduction.smoke --pretrained /absolute/path/deit_small_patch16_224.pth`; then both stages' full-size pilots and interrupted recovery comparisons with `python -m reproduction.compare BASELINE/checkpoint.pth RESUMED/checkpoint.pth`. See `docs/KAGGLE.md`.
+- CPU checks: `python -m pytest tests -q`. GPU acceptance: `python -m reproduction.smoke --pretrained /absolute/path/deit_small_patch16_224.pth`; then both stages' full-size pilots and interrupted recovery comparisons with `python -m reproduction.compare BASELINE/checkpoint.pth RESUMED/checkpoint.pth`. See `docs/KAGGLE.md`.
 - GPU acceptance requires both stages' forward/backward checks and an interrupted-versus-uninterrupted recovery check, followed by author-checkpoint evaluation.
 - Record Git commit, complete resolved config, seed, dataset-list hashes, environment/GPU, elapsed time, and checkpoint provenance per run.
 - Update the plan's checklist/results after verified milestones. Preserve official ground-truth usage for CAM evaluation/checkpoint selection in descriptions.
+- User workflow clarification: importing the notebook or cloning code plus attached private input/saved-run datasets is the default. Keep one notebook configuration cell, make the pilot optional, and restore checkpoints automatically. Do not impose manual GPU-acceptance/forecast flags before normal training. Verification evidence remains required before claiming runtime compatibility/results; preserve the compute and official-schedule boundaries.
 
 ## Handoff state
 
