@@ -14,7 +14,6 @@ from timm.models.layers import DropPath
 from torch import Tensor
 from typing import Union
 
-import xformers.ops as xops
 
 class FeedForward(nn.Module):
     def __init__(self, dim, hidden_dim, dropout, out_dim=None):
@@ -176,6 +175,7 @@ class EVA02Attention(Attention):
 class EVA02Block(Block):
     def __init__(self, dim, heads, mlp_dim, dropout, drop_path,
         init_values=1e-5, use_bn=False, rope=None, norm_layer=nn.LayerNorm):
+        import xformers.ops as xops
         super().__init__(dim, heads, mlp_dim, dropout, drop_path, norm_layer=norm_layer)
         self.attn = EVA02Attention(dim, heads, dropout, rope=rope)
         self.mlp = xops.SwiGLU(

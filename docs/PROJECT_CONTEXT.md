@@ -18,31 +18,35 @@ Reproduce **WeakTr: Exploring Plain Vision Transformer for Weakly-supervised Sem
 
 ## Current state
 
-Fork wiring and branch publication are complete. Default push remote is `origin`. Initial inspection is complete. The user asked to save the plan and stop for the night before implementation proceeded.
+Implementation resumed on 2026-11-09 at the user's request. The reproduction now has shared atomic full-state checkpoints, both trainers' resume integration, single-GPU evaluation repairs, lazy EVA dependencies, VOC validation, annotation fingerprints, experiment records, transfer verification, a staged launcher, GPU smoke/comparison commands, candidate isolated Kaggle setup, and both notebooks in the repository. Default push remote is `origin`.
 
-Only documentation has been added in this handoff. No training code fixes, environment changes, GPU jobs, data downloads, or measured reproduction results are complete. See [REPRODUCTION_PLAN.md](REPRODUCTION_PLAN.md) for the agreed implementation and checklist.
+Focused CPU tests cover interrupted-versus-uninterrupted recovery, failed writes/previous checkpoints, invalid masks/splits, official CAM IoU with ignored/absent classes, and corrupted transfers. Notebook schemas and all code cells compile, and walkthrough paths are verified. These are CPU/static checks; no real dataset preflight, Kaggle compatibility, GPU training, reference evaluation or reproduction metric has been measured. See [KAGGLE.md](KAGGLE.md) for commands and [REPRODUCTION_PLAN.md](REPRODUCTION_PLAN.md) for pending acceptance.
 
 ## Files and learning resources
 
 Workspace: `F:\Courses\CV nâng cao\Project`; repository: its `WeakTr` subdirectory.
 
-- `../WeakTr_explained.ipynb`: existing walkthrough, still outside the repository. Copy to repository root during implementation and verify paths before removing any external copy.
+- `WeakTr_explained.ipynb`: imported walkthrough with old outputs cleared and repository paths verified. Its external source `../WeakTr_explained.ipynb` remains preserved. Default cache remains the sibling `../weaktr_cache`, overridable with `WEAKTR_CACHE`. Full execution is pending.
+- `WeakTr_Kaggle.ipynb`: staged runtime workflow; long jobs are disabled until deliberately executed.
 - `../weaktr_cache/`: external cache containing files named `deit_small_patch16_224.pth` and `weaktr_voc_phase1.pth`, plus example images. Names are not provenance verification; validate before use.
 - `../WeakTr paper.pdf`: local paper copy.
 - `docs/Training.md`, `docs/Evaluate.md`, `docs/Install.md`, `docs/prepare_dataset.md`: upstream instructions.
 - `main.py`, `models.py`, `AAF.py`, `engine.py`: Phase 1 and CAM generation.
 - `OnlineRetraining/segm/train.py` and `model/decoder.py`: Phase 2 and gradient clipping.
 
-## Findings to address next
+## Inspection findings and implementation status
 
-1. Phase 1's `--resume` loads weights for CAM generation but does not implement normal full-state training resume. Latest checkpoints currently omit optimizer/scheduler/scaler/RNG state. The dedicated data-loader generator also needs persistence.
-2. Phase 2's resume block indexes `checkpoint_best_path` as a dictionary and suppresses the error. Its latest checkpoint is saved before validation; new complete snapshots should capture the completed epoch's selection state.
-3. `OnlineRetraining/segm/model/factory.py` imports Apex unconditionally; `model/blocks.py` imports xformers unconditionally. Make optional-backbone dependencies lazy without changing DeiT-S computations.
+1. Phase 1 now saves/restores optimizer, scheduler, scaler, best metrics, configuration and RNG, including its dedicated data-loader generator. Legacy weights-only training recovery is rejected; author checkpoints remain evaluation references.
+2. Phase 2 restores best metrics from the full latest snapshot, saved after validation. Both stages retain latest/previous/best snapshots with atomic writes. Recovery is restricted to one training GPU and completed epochs; GPU equivalence remains pending.
+3. Apex/xformers imports are lazy within EVA code paths. DeiT-S calculations are unchanged. Phase-2 single-GPU metrics no longer require an initialized process group, and the removed NumPy float alias is replaced.
 4. Phase 1 scales LR by effective batch size / 512. With the documented batch size and supplied LR, the scaled LR is `7.5e-5`.
 5. Phase 2 CLI defaults to evaluation every epoch, overriding the YAML's `eval_freq: 8`. Preserve resolved CLI behavior. YAML VOC dimensions: resize 520, crop/window 480, stride 320.
-6. Phase 2's default annotation path is ground truth. The reproduction launcher must explicitly select generated pseudo-labels and verify this before training.
+6. Phase 2's upstream default annotation path is ground truth. The reproduction launcher now explicitly selects generated pseudo-labels, validates them, and fingerprints their contents for recovery.
 7. Official Phase-1 commands differ from some paper appendix hyperparameters. Use the official VOC repository commands and record differences.
-8. Existing Git exclusions include broad `*.json` and `*results*` patterns. Ensure intended small manifests/metrics can be tracked while excluding heavy artifacts and secrets.
+8. Broad JSON/results exclusions were replaced with explicit artifact/credential exclusions. Small configs/manifests/metrics can be tracked outside generated artifact directories; licenses and attribution are preserved.
+9. Final evaluation intentionally defaults to `backbone=multi`, combining two decoder-layer predictions with weight 0.8; the launcher preserves this, separately from the single-output decoder used during epoch validation.
+
+The external ImageNet cache file was hashed during implementation: `cd65a15597004d0ce19d7a9daef969903972db5b398e3a5febcd3c4df1d8f59f`, matching the published DeiT-S filename prefix. The author WeakTr cache's provenance and evaluation remain pending.
 
 Local Python inspection found torch, NumPy, Pillow, pytest, and nbformat installed, but not timm. This does not establish GPU availability or end-to-end compatibility. No Kaggle runtime is connected or verified.
 
@@ -52,4 +56,4 @@ Repository lists contain 10,582 training and 1,449 validation IDs. Full image/ma
 
 ## Next session
 
-Read agent guidance and the saved plan, inspect the working tree, then implement environment isolation, full checkpoint recovery, data/metric tests, and the staged Kaggle notebook. Verify locally before pushing. Leave GPU results marked pending until measured; do not imply that saving this plan completed the reproduction.
+Use `docs/KAGGLE.md` and `WeakTr_Kaggle.ipynb` to prepare the isolated candidate environment and real VOC data with the accelerator disabled. Then verify both stages' GPU steps and official batch sizes, controlled recovery, author-checkpoint evaluation and runtime forecast before long training. No Kaggle runtime is currently connected. Preserve the compute boundary and leave all GPU metrics pending until measured.

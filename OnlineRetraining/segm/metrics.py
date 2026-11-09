@@ -49,6 +49,8 @@ def gather_data(seg_pred, tmp_dir=None):
     prediction and ground truth are stored in a common tmp directory
     and loaded on the master node to compute metrics
     """
+    if not ptu.distributed:
+        return seg_pred
     if tmp_dir is None:
         tmpprefix = os.path.expandvars("temp")
     else:
@@ -107,7 +109,7 @@ def compute_metrics(
         ret_metrics = [ret_metrics["aAcc"], ret_metrics["Acc"], ret_metrics["IoU"]]
         ret_metrics_mean = torch.tensor(
             [
-                np.round(np.nanmean(ret_metric.astype(np.float)) * 100, 2)
+                np.round(np.nanmean(np.asarray(ret_metric, dtype=float)) * 100, 2)
                 for ret_metric in ret_metrics
             ],
             dtype=float,

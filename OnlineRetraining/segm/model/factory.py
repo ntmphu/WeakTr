@@ -17,7 +17,6 @@ from segm.model.decoder import MaskTransformer, MultiMaskTransformer
 from segm.model.segmenter import Segmenter, MultiSegmenter
 import segm.utils.torch as ptu
 
-from apex.normalization import FusedLayerNorm
 
 # 添加多个键值对
 
@@ -51,6 +50,8 @@ def vit_base_patch8_384(pretrained=False, **kwargs):
 
 def create_vit(model_cfg):
     model_cfg = model_cfg.copy()
+    pretrained_path = model_cfg.pop('pretrained_path', None)
+    initialize = model_cfg.pop('initialize', True)
     backbone = model_cfg.pop("backbone")
 
     normalization = model_cfg.pop("normalization")
@@ -77,12 +78,21 @@ def create_vit(model_cfg):
     if "dinov2" in backbone:
         model = DINOV2VisionTransformer(**model_cfg)
     elif "eva02" in backbone:
+        from apex.normalization import FusedLayerNorm
         mlp_expansion_ratio = 4*2/3
         model_cfg["d_ff"] = int(mlp_expansion_ratio * model_cfg["d_model"])
         model_cfg["norm_layer"] = FusedLayerNorm
         model = EVA02VisionTransformer(**model_cfg)
     else:
         model = VisionTransformer(**model_cfg)
+
+    if not initialize:
+        return model
+    if pretrained_path:
+        state = torch.load(pretrained_path, map_location='cpu', weights_only=False)
+        state = state.get('model', state)
+        model.load_state_dict(checkpoint_filter_fn(state, model), strict=True)
+        return model
     
     from torch.hub import get_dir
     hub_dir = get_dir()
@@ -163,6 +173,8 @@ def load_model(model_path, backbone=None):
     with open(variant_path, "r") as f:
         variant = yaml.load(f, Loader=yaml.FullLoader)
     net_kwargs = variant["net_kwargs"]
+    net_kwargs = net_kwargs.copy()
+    net_kwargs['initialize'] = False
     if backbone is None:
         backbone = net_kwargs["backbone"]
     if "multi" in backbone:

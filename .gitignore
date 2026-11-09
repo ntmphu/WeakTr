@@ -49,6 +49,7 @@ coverage.xml
 *.py,cover
 .hypothesis/
 .pytest_cache/
+pytest-cache-files-*/
 cover/
 
 # Translations
@@ -166,12 +167,40 @@ run.sh
 run_affinitynet.sh
 CenterPoints/exp_run.sh
 colorful.py
-*.json
 data/coco
 data/voc12
 mlruns/*
-*results*
 OnlineRetraining/mlruns
 OnlineRetraining/start*
 OnlineRetraining/seg*
 !OnlineRetraining/segm
+
+# Reproduction artifacts (small docs/config/metrics JSON remain trackable)
+*.pth
+*.pt
+*.ckpt
+*.npy
+!voc12/cls_labels.npy
+!coco/cls_labels.npy
+*.npz
+*.tar
+*.tar.gz
+*.zip
+/artifacts/
+/WeakTr_results*/
+/weaktr_cache/
+/OnlineRetraining/*results*/
+/OnlineRetraining/start*/
+**/selection-cams/
+**/pseudo/
+**/seg_prob_ms/
+**/seg_pred_ms/
+**/checkpoint*.tmp
+**/checkpoint*.pth.*.tmp
+.kaggle/
+kaggle.json
+credentials*.json
+service_account*.json
+*.pem
+*.key
+.env.*

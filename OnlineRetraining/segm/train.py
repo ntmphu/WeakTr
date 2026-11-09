@@ -6,6 +6,12 @@ import numpy as np
 import torch
 import click
 import argparse
+import random
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from reproduction.checkpoint import atomic_save, load_checkpoint, make_snapshot, restore_training
+from reproduction.data import sha256, annotation_fingerprint, read_ids
+from reproduction.records import write_record
+import time
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 import segm.utils.torch as ptu
@@ -37,6 +43,9 @@ from segm.optim.optim_factory import get_parameter_groups, LayerDecayValueAssign
 @click.option("--resume/--no-resume", default=False, is_flag=True)
 @click.option("--run-id", default=None, type=str)
 @click.option("--num-workers", default=2, type=int)
+@click.option("--seed", default=504, type=int)
+@click.option("--pretrained", default=None, type=click.Path(exists=True))
+@click.option("--stop-after-epoch", default=None, type=int)
 # data parameters
 @click.option("--dataset", type=str)
 @click.option("--max-ratio", type=int, default=None)
@@ -75,6 +84,9 @@ def main(
         resume,
         run_id,
         num_workers,
+        seed,
+        pretrained,
+        stop_after_epoch,
         dataset,
         max_ratio,
         im_size,
@@ -106,6 +118,12 @@ def main(
         torch.cuda.set_device(local_rank)
         torch.distributed.init_process_group(backend="nccl", init_method="env://")
     ptu.set_gpu_dist_mode(True)
+    if ptu.distributed:
+        raise ValueError('Full reproduction recovery currently supports one training GPU.')
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
 
     if ptu.dist_rank == 0:
         # start mlflow
@@ -159,6 +177,7 @@ def main(
     # experiment config
     batch_size = world_batch_size // ptu.world_size
     variant = dict(
+        seed=seed,
         world_batch_size=world_batch_size,
         version="normal",
         resume=resume,
@@ -228,7 +247,7 @@ def main(
     # model
     net_kwargs = variant["net_kwargs"]
     net_kwargs["n_cls"] = n_cls
-    model = create_segmenter(net_kwargs)
+    model = create_segmenter(dict(net_kwargs, pretrained_path=pretrained, initialize=not resume))
     model.to(ptu.device)
 
     # GradientClipping
@@ -279,21 +298,28 @@ def main(
     max_epoch = 0
 
     # resume
-    if resume and checkpoint_path.exists():
+    # Compare training semantics, allowing artifact/data relocation between runtimes.
+    import copy
+    recovery_config = copy.deepcopy(variant)
+    for key in ('resume', 'log_dir'):
+        recovery_config.pop(key)
+    recovery_config['dataset_kwargs'].pop('ann_dir')
+    recovery_config['split_hashes'] = {
+        name: sha256(Path(__file__).resolve().parents[2] / 'voc12' / name)
+        for name in ('train_aug_id.txt', 'val_id.txt')}
+    if dataset == 'pascal_voc':
+        recovery_config['annotation_sha256'] = annotation_fingerprint(
+            train_loader.unwrapped.dataset.ann_dir,
+            read_ids(Path(__file__).resolve().parents[2] / 'voc12/train_aug_id.txt'))
+    if resume:
+        if not checkpoint_path.exists():
+            raise FileNotFoundError(checkpoint_path)
         printd(f"Resuming training from checkpoint: {checkpoint_path}")
-        checkpoint = torch.load(checkpoint_path, map_location="cpu")
-        model.load_state_dict(checkpoint["model"])
-        optimizer.load_state_dict(checkpoint["optimizer"])
-        if loss_scaler and "loss_scaler" in checkpoint:
-            loss_scaler.load_state_dict(checkpoint["loss_scaler"])
-        lr_scheduler.load_state_dict(checkpoint["lr_scheduler"])
-        variant["algorithm_kwargs"]["start_epoch"] = checkpoint["epoch"] + 1
-        try:
-            # load best_checkpoint
-            max_epoch = checkpoint_best_path["epoch"]
-            max_miou = checkpoint_best_path["miou"]
-        except:
-            pass
+        checkpoint = load_checkpoint(checkpoint_path)
+        next_epoch, best = restore_training(checkpoint, 'phase2', model, optimizer,
+                                           lr_scheduler, loss_scaler, recovery_config)
+        variant['algorithm_kwargs']['start_epoch'] = next_epoch
+        max_epoch, max_miou = best['max_epoch'], best['max_miou']
 
     if ptu.distributed:
         model = DDP(model, device_ids=[ptu.device], find_unused_parameters=True)
@@ -317,6 +343,9 @@ def main(
         model_without_ddp = model.module
 
     val_seg_gt = val_loader.dataset.get_gt_seg_maps()
+    write_record(log_dir / 'run.json', dict(variant=variant, recovery=recovery_config),
+                 [checkpoint_path] if resume else ([pretrained] if pretrained else []))
+    started = time.monotonic()
 
     printd(f"Train dataset length: {len(train_loader.dataset)}")
     printd(f"Val dataset length: {len(val_loader.dataset)}")
@@ -336,20 +365,8 @@ def main(
             gradientclipping
         )
 
-        # save checkpoint
-        if ptu.dist_rank == 0:
-            snapshot = dict(
-                model=model_without_ddp.state_dict(),
-                optimizer=optimizer.state_dict(),
-                n_cls=model_without_ddp.n_cls,
-                lr_scheduler=lr_scheduler.state_dict(),
-            )
-            if loss_scaler is not None:
-                snapshot["loss_scaler"] = loss_scaler.state_dict()
-            snapshot["epoch"] = epoch
-            torch.save(snapshot, checkpoint_path)
-
         # evaluate
+        improved = False
         eval_epoch = epoch % eval_freq == 0 or epoch == num_epochs - 1
         if eval_epoch:
             eval_logger, miou = evaluate(
@@ -363,24 +380,26 @@ def main(
 
             # save checkpoint best
             if miou > max_miou and ptu.dist_rank == 0:
-                max_miou = miou
+                improved = True
+                max_miou = float(miou)
                 max_epoch = epoch
-                snapshot = dict(
-                    model=model_without_ddp.state_dict(),
-                    optimizer=optimizer.state_dict(),
-                    n_cls=model_without_ddp.n_cls,
-                    lr_scheduler=lr_scheduler.state_dict(),
-                )
-                if loss_scaler is not None:
-                    snapshot["loss_scaler"] = loss_scaler.state_dict()
-                snapshot["epoch"] = epoch
-                snapshot["miou"] = max_miou
-                torch.save(snapshot, checkpoint_best_path)
             eval_logger.update(**{"max_miou": max_miou, "n": 1})
             eval_logger.update(**{"max_epoch": max_epoch, "n": 1})
 
             printd(f"Stats [{epoch}]:", eval_logger, flush=True)
             printd("")
+
+        # Snapshot only after validation has updated checkpoint-selection state.
+        if ptu.dist_rank == 0:
+            snapshot = make_snapshot('phase2', model_without_ddp, optimizer,
+                                     lr_scheduler, loss_scaler, epoch,
+                                     dict(max_epoch=max_epoch, max_miou=max_miou),
+                                     recovery_config)
+            snapshot.update(n_cls=n_cls, miou=max_miou)
+            snapshot['elapsed_seconds_this_session'] = time.monotonic() - started
+            if improved:
+                atomic_save(snapshot, checkpoint_best_path)
+            atomic_save(snapshot, checkpoint_path, retain_previous=True)
 
         # log stats
         if ptu.dist_rank == 0:
@@ -404,6 +423,8 @@ def main(
                 mlflow.log_metric(key, value, log_stats["epoch"])
             with open(log_dir / "log.txt", "a") as f:
                 f.write(json.dumps(log_stats) + "\n")
+        if stop_after_epoch is not None and epoch + 1 >= stop_after_epoch:
+            break
 
 
 if __name__ == "__main__":

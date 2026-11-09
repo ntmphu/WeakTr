@@ -23,6 +23,9 @@ import numpy as np
 import mlflow
 from evaluation import whole_eval
 import yaml
+from reproduction.checkpoint import atomic_save, load_checkpoint, make_snapshot, restore_training
+from reproduction.data import sha256
+from reproduction.records import write_record
 
 from torch.utils.data.distributed import DistributedSampler
 from torch.nn.parallel import DistributedDataParallel as DDP
@@ -144,6 +147,8 @@ def get_args_parser():
     parser.add_argument('--resume', default='', help='resume from checkpoint')
     parser.add_argument('--start_epoch', default=0, type=int, metavar='N',
                         help='start epoch')
+    parser.add_argument('--stop-after-epoch', default=None, type=int,
+                        help='Stop after this many completed epochs, preserving the full LR schedule.')
     parser.add_argument('--eval', action='store_true', help='Perform evaluation only')
     parser.add_argument('--num_workers', default=10, type=int)
     parser.add_argument('--pin-mem', action='store_true',
@@ -193,6 +198,15 @@ def same_seeds(seed):
 
 def main(args):
     print(args)
+    if args.distributed and not args.gen_attention_maps:
+        raise ValueError("The reproduction recovery workflow supports one training GPU.")
+    if args.epoch_save_ckpt:
+        raise ValueError("Use latest/previous/best full snapshots; legacy epoch caching cannot safely resume training.")
+    recovery_config = {k: v for k, v in vars(args).items()
+                       if k not in {'resume', 'output_dir', 'finetune', 'start_epoch', 'stop_after_epoch',
+                                    'data_path', 'cam_npy_dir', 'gt_dir', 'attention_dir'}}
+    recovery_config['split_hashes'] = {name: sha256(Path('voc12') / name)
+                                     for name in ('train_aug_id.txt', 'val_id.txt', 'train_id.txt')}
 
     output_dir = Path(args.output_dir)
     if not output_dir.exists():
@@ -298,12 +312,12 @@ def main(args):
     if "RandWeight" in args.model and not args.gen_attention_maps:
         np.save(os.path.join(args.output_dir, 'query.npy'), model.adaptive_attention_fusion.query.cpu().numpy())
 
-    if args.finetune and not args.gen_attention_maps:
+    if args.finetune and not args.gen_attention_maps and not args.resume:
         if args.finetune.startswith('https'):
             checkpoint = torch.hub.load_state_dict_from_url(
                 args.finetune, map_location='cpu', check_hash=True)
         else:
-            checkpoint = torch.load(args.finetune, map_location='cpu')
+            checkpoint = load_checkpoint(args.finetune)
 
         try:
             checkpoint_model = checkpoint['model']
@@ -362,14 +376,30 @@ def main(args):
 
     lr_scheduler, _ = create_scheduler(args, optimizer)
 
+    best = dict(max_accuracy=0.0, max_max_mIoU=0.0, max_epoch=0)
+    if args.resume:
+        checkpoint = load_checkpoint(args.resume)
+        if args.eval or args.gen_attention_maps:
+            model.load_state_dict(checkpoint.get('model', checkpoint), strict=True)
+        else:
+            args.start_epoch, best = restore_training(
+                checkpoint, 'phase1', model, optimizer, lr_scheduler, loss_scaler,
+                recovery_config, g if if_dataloader_reproduce else None)
+    elif args.start_epoch:
+        raise ValueError('--start_epoch requires a full --resume checkpoint.')
+    write_record(output_dir / ('run_attn.json' if args.gen_attention_maps else 'run.json'),
+                 dict(resolved=vars(args), recovery=recovery_config),
+                 [args.resume] if args.resume else
+                 ([args.finetune] if args.finetune and Path(args.finetune).is_file() else []))
+
     if args.eval:
         test_stats = evaluate(data_loader_val, model, device)
         print(f"mAP of the network on the {len(dataset_val)} test images: {test_stats['mAP'] * 100:.1f}%")
         return
 
     if args.gen_attention_maps:
-        checkpoint = torch.load(args.resume, map_location='cpu')
-        model.load_state_dict(checkpoint['model'], strict=False)
+        if not args.resume:
+            raise ValueError('CAM generation requires --resume weights.')
         if "RandWeight" in args.model:
             model.adaptive_attention_fusion.query = torch.from_numpy(np.load(os.path.join(args.output_dir, 'query.npy'))).to(device)
         if args.distributed:
@@ -379,34 +409,21 @@ def main(args):
 
     print(f"Start training for {args.epochs} epochs")
     start_time = time.time()
-    max_accuracy = 0.0
-    max_max_mIoU = 0.0
-    max_epoch = 0
+    max_accuracy = best['max_accuracy']
+    max_max_mIoU = best['max_max_mIoU']
+    max_epoch = best['max_epoch']
 
     for epoch in range(args.start_epoch, args.epochs):
-        if args.epoch_save_ckpt and os.path.exists(output_dir / f'checkpoint{epoch}.pth'):
-            checkpoint = torch.load(output_dir / f'checkpoint{epoch}.pth', map_location='cpu')
-            model.load_state_dict(checkpoint['model'], strict=False)
-            optimizer.load_state_dict(checkpoint['optimizer'])
-            train_stats = checkpoint["train_stats"]
-        else:
-            train_stats = train_one_epoch(
-                model, data_loader_train,
-                optimizer, device, epoch, loss_scaler,
-                args.clip_grad
-            )
+        train_stats = train_one_epoch(
+            model, data_loader_train, optimizer, device, epoch, loss_scaler,
+            args.clip_grad)
 
         lr_scheduler.step(epoch)
 
         test_stats = evaluate(data_loader_val, model, device)
         print(f"mAP of the network on the {len(dataset_val)} test images: {test_stats['mAP'] * 100:.1f}%")
-        if test_stats["mAP"] > max_accuracy and args.output_dir:
-            checkpoint_paths = [output_dir / 'checkpoint_best.pth']
-            for checkpoint_path in checkpoint_paths:
-                torch.save({
-                    'model': model.state_dict(),
-                    'epoch': epoch,
-                }, checkpoint_path)
+        improved_accuracy = test_stats["mAP"] > max_accuracy
+        improved_miou = False
 
         max_accuracy = max(max_accuracy, test_stats["mAP"])
         print(f'Max mAP: {max_accuracy * 100:.2f}%')
@@ -428,13 +445,7 @@ def main(args):
             print(f'Max mIoU: {max_miou :.2f}%')
 
             if max_miou > max_max_mIoU and args.output_dir:
-                checkpoint_paths = [output_dir / 'checkpoint_best_mIoU.pth']
-                for checkpoint_path in checkpoint_paths:
-                    torch.save({
-                        'model': model.state_dict(),
-                        'epoch': epoch,
-                        'miou': max_miou
-                    }, checkpoint_path)
+                improved_miou = True
                 max_epoch = epoch
 
             max_max_mIoU = max(max_miou, max_max_mIoU)
@@ -457,12 +468,19 @@ def main(args):
             with (output_dir / "log.txt").open("a") as f:
                 f.write(json.dumps(log_stats) + "\n")
 
-        torch.save({'model': model.state_dict(), 'epoch': epoch}, output_dir / 'checkpoint.pth')
-        if args.epoch_save_ckpt:
-            torch.save({'model': model.state_dict(),
-                        'optimizer': optimizer.state_dict(),
-                        'train_stats': train_stats,
-                        'epoch': epoch}, output_dir / f'checkpoint{epoch}.pth')
+        snapshot = make_snapshot(
+            'phase1', model, optimizer, lr_scheduler, loss_scaler, epoch,
+            dict(max_accuracy=max_accuracy, max_max_mIoU=max_max_mIoU, max_epoch=max_epoch),
+            recovery_config, g if if_dataloader_reproduce else None)
+        snapshot['elapsed_seconds_this_session'] = time.time() - start_time
+        if improved_accuracy:
+            atomic_save(snapshot, output_dir / 'checkpoint_best.pth')
+        if improved_miou:
+            snapshot['miou'] = max_miou
+            atomic_save(snapshot, output_dir / 'checkpoint_best_mIoU.pth')
+        atomic_save(snapshot, output_dir / 'checkpoint.pth', retain_previous=True)
+        if args.stop_after_epoch is not None and epoch + 1 >= args.stop_after_epoch:
+            break
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Training time {}'.format(total_time_str))

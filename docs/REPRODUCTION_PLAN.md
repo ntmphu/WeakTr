@@ -1,6 +1,6 @@
 # WeakTr VOC Reproduction: Implementation Plan
 
-Status: agreed plan saved on 2026-11-09 (Asia/Saigon). Implementation paused at the user's request; resume when requested. No training has been launched and no reproduction results have been measured.
+Status: implementation resumed on 2026-11-09 (Asia/Saigon). CPU recovery/data/IoU/transfer tools, trainer fixes, notebook workflow and walkthrough import are implemented and locally checked. GPU/runtime acceptance remains pending. No training has been launched and no reproduction results have been measured.
 
 ## Summary
 
@@ -84,9 +84,9 @@ The deliverable is a repeatable experiment with honest measured results. Matchin
 
 - [x] Fork connected and reproduction branch pushed.
 - [x] Plan, context, and agent guidance saved.
-- [ ] Environment and Kaggle notebook implemented.
-- [ ] Resume fixes and verification tools implemented/tested.
-- [ ] Walkthrough imported and Git exclusions extended.
+- [x] Candidate isolated environment and Kaggle notebook implemented (GPU compatibility pending).
+- [x] Resume fixes and verification tools implemented/CPU-tested (GPU integration acceptance pending).
+- [x] Walkthrough imported, paths verified, external copy preserved, and Git exclusions extended.
 - [ ] Dataset preflight and GPU compatibility checks passed.
 - [ ] Runtime forecast and restart test completed.
 - [ ] Phase 1, CAMs, and pseudo-labels completed.
@@ -95,9 +95,11 @@ The deliverable is a repeatable experiment with honest measured results. Matchin
 
 | Measurement | Value |
 | --- | --- |
+| Local focused tests | 11 passed; CPU only, `python -m pytest tests/test_reproduction.py -q --tb=short` |
+| Notebook/static validation | Both notebooks validate; every code cell compiles; old outputs cleared |
 | Measured GPU hours | Not measured |
 | Phase-1 CAM mIoU | Not measured; README reference 69.4% |
 | Raw validation mIoU | Not measured |
 | Final post-CRF validation mIoU | Not measured; target 74.0% |
 
-Runnable reproduction commands will be added after implementation and verification. The existing `docs/Training.md` and `docs/Evaluate.md` remain the upstream command references; they are not yet a validated Kaggle workflow.
+Runnable preparation/pilot/full-stage commands are in [KAGGLE.md](KAGGLE.md) and `WeakTr_Kaggle.ipynb`. Local focused verification: `python -m pytest tests/test_reproduction.py -q`. Static checks validate both notebooks and compile their code cells. The upstream `docs/Training.md` and `docs/Evaluate.md` remain the protocol references. The Kaggle environment and complete training/evaluation workflow still require measured GPU acceptance; candidate dependency versions must not be described as validated pins.
