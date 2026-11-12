@@ -1,5 +1,7 @@
 import copy
+import os
 import random
+import subprocess
 from pathlib import Path
 
 import numpy as np
@@ -10,6 +12,7 @@ import torch
 from reproduction.checkpoint import atomic_save, load_checkpoint, make_snapshot, restore_training
 from reproduction.data import annotation_fingerprint, read_ids, validate_voc
 from reproduction.records import transfer_manifest
+from reproduction import kaggle
 
 
 class ScalerState:
@@ -217,6 +220,41 @@ def test_official_launcher_settings(tmp_path):
     assert value(evaluation, '--backbone') == 'multi'
     assert value(evaluation, '--weight') == '0.8'
     assert str(tmp_path / 'output/phase2/checkpoint.pth') in evaluation
+
+
+def test_kaggle_prepare_rebuilds_unusable_python(tmp_path, monkeypatch):
+    python = tmp_path / 'weaktr-env' / 'bin' / 'python'
+    python.parent.mkdir(parents=True)
+    python.write_text('stale interpreter')
+    (tmp_path / 'weaktr-bootstrap' / 'uv').mkdir(parents=True)
+    monkeypatch.setattr(kaggle.platform, 'system', lambda: 'Linux')
+    monkeypatch.setattr(kaggle.platform, 'machine', lambda: 'x86_64')
+    ready = False
+    commands = []
+
+    def fake_run(command, env=None):
+        nonlocal ready
+        commands.append([str(item) for item in command])
+        if 'uv' in command and 'venv' in command:
+            ready = True
+
+    def fake_subprocess_run(command, **kwargs):
+        if str(command[0]) == str(python):
+            if not ready:
+                raise PermissionError('stale virtualenv interpreter')
+            return subprocess.CompletedProcess(command, 0, stdout='Python 3.10.14\n')
+        if command[-1] == 'freeze':
+            return subprocess.CompletedProcess(command, 0)
+        raise AssertionError(f'Unexpected subprocess: {command}')
+
+    monkeypatch.setattr(kaggle, 'run', fake_run)
+    monkeypatch.setattr(kaggle.subprocess, 'run', fake_subprocess_run)
+    result = kaggle.install_environment(tmp_path, os.environ.copy())
+
+    assert result == python
+    assert any('venv' in command and '--clear' in command for command in commands)
+    assert len(commands) == 5
+    assert (tmp_path / 'weaktr-artifacts' / 'environment-freeze.txt').is_file()
 
 
 def test_recovery_comparison_detects_state_divergence():

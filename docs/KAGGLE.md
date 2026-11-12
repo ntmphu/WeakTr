@@ -10,7 +10,7 @@ Open `WeakTr_Kaggle.ipynb`. It clones the reproduction branch if needed and has 
 
 1. Upload `data/voc12/weaktr-kaggle-inputs.zip` as a **private Kaggle dataset**, with the ZIP extracted. This prepared bundle contains only required VOC inputs, exact split files, verified ImageNet weights, and a payload-hash manifest. The raw archives and heavy data are never added to Git.
 2. Import `WeakTr_Kaggle.ipynb` and attach that private dataset. Enable Internet for code/package installation. The dataset's name does not matter; setup discovers its manifest automatically.
-3. Run configuration and setup. Setup copies verified inputs to runtime-local disk and installs an isolated Python 3.10 environment. It checks both trainer imports, CRF, focused CPU tests and the real dataset. Run this preparation with the accelerator disabled where possible; the subprocess also hides CUDA during setup.
+3. Run configuration and setup. Setup copies verified inputs to runtime-local disk and installs an isolated Python 3.10 environment, rebuilding it if an existing interpreter is missing, unusable, or the wrong version. It checks both trainer imports, CRF, focused CPU tests and the real dataset. Run this preparation with the accelerator disabled where possible; the subprocess also hides CUDA during setup.
 4. Run the remaining cells with one GPU. Optionally set `PILOT = True` first. No full schedule is shortened implicitly.
 5. Download `/kaggle/working/weaktr-resume.zip` after training, or preserve it in notebook-version outputs. Attach its extracted contents as a private dataset in the next session, together with the original input dataset.
 

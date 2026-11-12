@@ -20,6 +20,16 @@ def run(command, env=None):
     subprocess.run([str(item) for item in command], cwd=ROOT, env=env, check=True)
 
 
+def python_version(python, env):
+    try:
+        result = subprocess.run(
+            [str(python), '--version'], cwd=ROOT, env=env, check=True,
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    return result.stdout.strip()
+
+
 def restore_inputs(inputs, work):
     """Copy the uploaded bundle's contents to local disk, checking every payload hash."""
     inputs, work = Path(inputs).resolve(), Path(work).resolve()
@@ -61,8 +71,11 @@ def install_environment(work, env):
         run([sys.executable, '-m', 'pip', 'install', '--target', tools, 'uv==0.5.11'], env)
     uv_env = env.copy()
     uv_env['PYTHONPATH'] = str(tools) + os.pathsep + uv_env.get('PYTHONPATH', '')
-    if not python.exists():
-        run([sys.executable, '-m', 'uv', 'venv', '--python', '3.10', '--seed', python.parent.parent], uv_env)
+    if not (python_version(python, env) or '').startswith('Python 3.10.'):
+        run([sys.executable, '-m', 'uv', 'venv', '--clear', '--python', '3.10',
+             '--seed', python.parent.parent], uv_env)
+    if not (python_version(python, env) or '').startswith('Python 3.10.'):
+        raise RuntimeError(f'Could not create a runnable Python 3.10 environment at {python}.')
     run([python, '-m', 'pip', 'install', 'pip<26', 'setuptools<70', 'wheel',
          'Cython==0.29.36', 'numpy==1.23.5'], env)
     run([python, '-m', 'pip', 'install', 'torch==1.13.1+cu117', 'torchvision==0.14.1+cu117',
