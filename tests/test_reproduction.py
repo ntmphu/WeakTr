@@ -24,7 +24,7 @@ class ScalerState:
         self.steps = state['steps']
 
 
-def setup(seed):
+def make_training_state(seed):
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -68,7 +68,7 @@ def assert_state_equal(left, right):
 @pytest.mark.parametrize('stage', ['phase1', 'phase2'])
 def test_interrupted_matches_uninterrupted(tmp_path, stage):
     config = {'epochs': 4, 'seed': 504, 'batch_size': 3}
-    first = setup(504)
+    first = make_training_state(504)
     generator = first[4] if stage == 'phase1' else None
     best = {'score': -1, 'epoch': -1}
     for index in range(4):
@@ -80,7 +80,7 @@ def test_interrupted_matches_uninterrupted(tmp_path, stage):
     expected_model = copy.deepcopy(first[0].state_dict())
     expected_opt = copy.deepcopy(first[1].state_dict())
     expected_best = best.copy()
-    resumed = setup(999)  # model creation and other startup RNG is overwritten by restore
+    resumed = make_training_state(999)  # model creation and other startup RNG is overwritten by restore
     restored_generator = resumed[4] if stage == 'phase1' else None
     next_epoch, best = restore_training(load_checkpoint(tmp_path / 'checkpoint.pth'),
                                          stage, *resumed[:4], config, restored_generator)
@@ -97,7 +97,7 @@ def test_interrupted_matches_uninterrupted(tmp_path, stage):
 
 
 def test_resume_rejects_weights_and_changed_config():
-    state = setup(1)
+    state = make_training_state(1)
     with pytest.raises(ValueError, match='Full recovery'):
         restore_training({'model': state[0].state_dict()}, 'phase1', *state[:4], {})
     snapshot = make_snapshot('phase1', *state[:4], 0, {}, {'epochs': 60}, state[4])
