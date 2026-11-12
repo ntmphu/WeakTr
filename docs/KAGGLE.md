@@ -18,6 +18,8 @@ Open `WeakTr_Kaggle.ipynb`. It clones the reproduction branch if needed and has 
 
 The candidate environment is Torch 1.13.1+cu117/TorchVision 0.14.1+cu117, binary `mmcv-full==1.7.1` from OpenMMLab's matching wheel index, and `reproduction/requirements-kaggle.txt`. Package installation does not compile CUDA operators. These versions remain candidates until runtime acceptance; preserve the package freeze and resolved pydensecrf source commit. Apex/xformers are loaded only for EVA backbones; DeiT-S computations are unchanged.
 
+The GPU smoke check allows up to 20 Phase-1 AMP calibration attempts: GradScaler can skip early updates and lower its scale after overflow. Each retry clears gradients and recomputes the forward pass on the same synthetic batch. Passing requires finite loss, gradients and parameters plus an unskipped optimizer update; persistent overflow still fails. The record includes attempt count and final scale. This affects only smoke acceptance, not the trainers or their official settings.
+
 The same workflow can be invoked from a cloned repository in Kaggle:
 
 ```bash

@@ -22,6 +22,35 @@ def check_gradients(model, loss):
         raise ValueError('Missing/nonfinite smoke gradients.')
 
 
+def check_amp_update(model, optimizer, scaler, make_loss, max_attempts=20):
+    """Allow GradScaler backoff, but require one finite, unskipped update."""
+    for attempt in range(1, max_attempts + 1):
+        optimizer.zero_grad(set_to_none=True)
+        loss = make_loss()
+        if not torch.isfinite(loss):
+            raise ValueError('Nonfinite Phase-1 smoke loss.')
+        previous_scale = scaler.state_dict()['scale']
+        scaler(loss, optimizer, parameters=model.parameters())
+        scale = scaler.state_dict()['scale']
+        gradients = [(name, p.grad) for name, p in model.named_parameters() if p.grad is not None]
+        if not gradients:
+            raise ValueError('Missing Phase-1 AMP gradients.')
+        if not all(torch.isfinite(p).all() for p in model.parameters()):
+            raise ValueError('Nonfinite Phase-1 parameters after AMP update.')
+        bad = [name for name, grad in gradients if not torch.isfinite(grad).all()]
+        if scale < previous_scale:
+            print(f'Phase-1 AMP calibration {attempt}/{max_attempts}: '
+                  f'update skipped; scale {previous_scale:g} -> {scale:g}; '
+                  f'nonfinite gradients: {bad[:3]}', flush=True)
+            continue
+        if bad:
+            raise ValueError(f'Nonfinite Phase-1 AMP gradients without scaler backoff: {bad[:3]}')
+        print(f'Phase-1 AMP update passed on attempt {attempt}; scale={scale:g}', flush=True)
+        return loss.item(), attempt, scale
+    raise ValueError(f'Phase-1 AMP did not complete a finite update after {max_attempts} '
+                     f'attempts; final scale={scale:g}, nonfinite gradients={bad[:3]}.')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--pretrained', required=True)
@@ -51,20 +80,16 @@ def main():
         raise ValueError(f'Unexpected Phase-1 ImageNet loading: {incompatible}')
     optimizer = torch.optim.AdamW(model.parameters(), lr=7.5e-5, weight_decay=.03)
     scaler = NativeScaler()
-    with torch.cuda.amp.autocast():
-        outputs = model(torch.randn(1, 3, 224, 224, device='cuda'))
-        labels = torch.randint(0, 2, (1, 20), device='cuda').float()
-        loss = sum(F.multilabel_soft_margin_loss(out, labels) for out in outputs)
-    if not torch.isfinite(loss):
-        raise ValueError('Nonfinite Phase-1 smoke loss.')
-    scaler(loss, optimizer, parameters=model.parameters())
-    gradients = [p.grad for p in model.parameters() if p.grad is not None]
-    if not gradients or not all(torch.isfinite(grad).all() for grad in gradients):
-        raise ValueError('Missing/nonfinite Phase-1 AMP gradients.')
-    if not all(torch.isfinite(p).all() for p in model.parameters()):
-        raise ValueError('Nonfinite Phase-1 parameters after AMP update.')
-    phase1_loss = loss.item()
-    del model, optimizer, outputs, loss, weights
+    inputs = torch.randn(1, 3, 224, 224, device='cuda')
+    labels = torch.randint(0, 2, (1, 20), device='cuda').float()
+
+    def make_loss():
+        with torch.cuda.amp.autocast():
+            outputs = model(inputs)
+            return sum(F.multilabel_soft_margin_loss(out, labels) for out in outputs)
+
+    phase1_loss, phase1_attempts, phase1_scale = check_amp_update(model, optimizer, scaler, make_loss)
+    del model, optimizer, inputs, labels, scaler, make_loss, weights
     gc.collect()
     torch.cuda.empty_cache()
 
@@ -89,6 +114,7 @@ def main():
     optimizer.step()
     write_record(args.record, dict(status='both_forward_backward_checks_passed', seed=504,
                                    synthetic_batch_size=1, phase1_loss=phase1_loss,
+                                   phase1_amp_attempts=phase1_attempts, phase1_amp_scale=phase1_scale,
                                    phase2_loss=loss.item(),
                                    pending=['GPU interrupted recovery', 'author-checkpoint evaluation',
                                             'official batch-size memory acceptance']), [args.pretrained])
