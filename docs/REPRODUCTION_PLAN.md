@@ -1,6 +1,6 @@
 # WeakTr VOC Reproduction: Implementation Plan
 
-Status: implementation resumed on 2026-11-09 (Asia/Saigon). CPU recovery/data/IoU/transfer tools, trainer fixes, notebook workflow and walkthrough import are implemented and locally checked. GPU/runtime acceptance remains pending. No training has been launched and no reproduction results have been measured.
+Status updated 2026-11-13 (Asia/Saigon): implementation and CPU checks are complete; the user reports both GPU smoke checks passed and supplied a complete 60-epoch Phase-1 log. Storage recovery, full GPU resume verification, pseudo-label generation, Phase 2 and final evaluation remain pending confirmation. Best logged selection CAM mIoU is 65.8367%; this is not final segmentation mIoU.
 
 ## Summary
 
@@ -82,6 +82,8 @@ The deliverable is a repeatable experiment with honest measured results. Matchin
 
 ## Current checklist and results
 
+2026-11-13 Phase-1 results (user-provided log and manifest): all 60 epochs 0-59 are logged consecutively. Best selection CAM mIoU: 65.83671942199474% at epoch 33, threshold 0.42. Last CAM mIoU: 64.39329263999188%; last classification mAP: 95.26802583583123%. Manifest lists latest/previous/best-classification/best-CAM snapshots, but binary hashes and latest checkpoint epoch remain unverified. Phase-1 schedule is complete in the log. Next steps are best-checkpoint multiscale CAM generation, CRF pseudo-labels, the Phase-2 pilot/full schedule, and final evaluation. The 69.4% upstream CAM reference needs matching postprocessing/protocol before a direct comparison; 74.0% is a separate final validation segmentation target.
+
 2026-11-13 storage failure: the user supplied nbconvert's final `OSError: [Errno 28] No space left on device`. Temporary runtime/data/CAM/probability storage is now separate from durable Kaggle outputs, with migration of known old temporary paths and storage reporting. Checkpoints and pseudo-labels stay in `/kaggle/working`. Pip/uv download caching is disabled for new installs; existing download caches can be purged before recovery. Resume ZIP export no longer creates an extra unpacked payload copy, and failures clean partial ZIPs while preserving the prior export. All 29 CPU tests pass with pinned pytest 7.4.4 (`PYTHONPATH=artifacts/pytest74`, `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1`, `python -m pytest tests -q --tb=short -p no:cacheprovider --basetemp artifacts/pytest-storage-verified`), including migration, scratch producer/consumer paths, saved-run roundtrip, and simulated disk-full export. Kaggle migration, actual free capacity, checkpoint availability, and completion of the failed run remain pending confirmation. Official training schedules and checkpoint identity are unchanged.
 
 2026-11-13 GPU smoke report: Phase-1 execution reached the AMP gradient check, which failed on its first attempt. Initial loss-scale overflow is a possible cause, not yet confirmed from the remote log. Smoke acceptance now permits at most 20 GradScaler backoffs and requires a finite, unskipped update, with scale/attempt diagnostics. Persistent overflow and nonfinite forward losses remain failures. All 25 CPU tests pass with isolated pytest 7.4.4, including simulated skipped-update recovery and persistent-overflow rejection (`PYTHONPATH=artifacts/pytest74`, `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1`, `python -m pytest tests -q --tb=short -p no:cacheprovider --basetemp artifacts/pytest-amp-calibration-verified`). Real CUDA rerun and both-stage acceptance remain pending. Trainer settings are unchanged.
@@ -99,7 +101,8 @@ Workflow clarification (2026-11-09): the user expects notebook import or Git clo
 - [x] Walkthrough imported, paths verified, external copy preserved, and Git exclusions extended.
 - [ ] Dataset preflight and GPU compatibility checks passed.
 - [ ] Runtime forecast and restart test completed.
-- [ ] Phase 1, CAMs, and pseudo-labels completed.
+- [x] Phase-1 60-epoch training completed according to the supplied log (saved checkpoint bytes still need verification).
+- [ ] Complete multiscale CAMs and CRF pseudo-labels generated.
 - [ ] Phase 2 completed.
 - [ ] Final evaluation and report completed.
 
@@ -109,7 +112,7 @@ Workflow clarification (2026-11-09): the user expects notebook import or Git clo
 | Notebook/static validation | Both notebooks validate; every code cell compiles; old outputs cleared |
 | Local VOC data validation | All 10,582 train and 1,449 val pairs pass decoding, dimensions, class IDs, split counts and disjointness; Kaggle transfer/preflight pending |
 | Measured GPU hours | Not measured |
-| Phase-1 CAM mIoU | Not measured; README reference 69.4% |
+| Phase-1 CAM mIoU | User log: best selection 65.8367% at epoch 33; final epoch 64.3933%. README reference 69.4% requires matching CAM evaluation/postprocessing |
 | Raw validation mIoU | Not measured |
 | Final post-CRF validation mIoU | Not measured; target 74.0% |
 
