@@ -147,7 +147,7 @@ def generate_attention_maps_ms(data_loader, model, device, args, epoch=None):
 
     img_list = open(args.img_ms_list).readlines()
     index = args.rank
-    for image_list, target in metric_logger.log_every(data_loader, 10, header):
+    for image_list, target in metric_logger.log_every(data_loader, 1000, header):
         if index >= len(img_list):
             continue
         images1 = image_list[0].to(device, non_blocking=True)
