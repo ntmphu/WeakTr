@@ -114,6 +114,7 @@ def test_saved_run_roundtrip_keeps_resume_artifacts_and_excludes_cams(tmp_path):
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(body)
     archive = export_run(output, tmp_path / 'export')
+    assert not (tmp_path / 'export').exists()  # no third copy of training artifacts
     with zipfile.ZipFile(archive) as collection:
         assert 'pseudo/a.png' in collection.namelist()
         assert not any('.npy' in name for name in collection.namelist())

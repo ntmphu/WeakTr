@@ -11,6 +11,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from reproduction.prepare import copy_atomic, digest, safe_name
+from reproduction.storage import migrate_temporary_files, report_storage
 
 MMCV_WHEELS = 'https://download.openmmlab.com/mmcv/dist/cu117/torch1.13/index.html'
 
@@ -65,8 +66,9 @@ def install_environment(work, env):
     if platform.system() != 'Linux' or platform.machine() not in ('x86_64', 'AMD64'):
         raise RuntimeError('The automatic environment installer targets Kaggle Linux x86_64.')
     work = Path(work)
-    python = work / 'weaktr-env/bin/python'
-    tools = work / 'weaktr-bootstrap'
+    runtime = Path(env.get('WEAKTR_RUNTIME', work))
+    python = runtime / 'weaktr-env/bin/python'
+    tools = runtime / 'weaktr-bootstrap'
     if not (tools / 'uv').is_dir():
         run([sys.executable, '-m', 'pip', 'install', '--target', tools, 'uv==0.5.11'], env)
     uv_env = env.copy()
@@ -156,19 +158,20 @@ def export_run(output, destination):
             continue
         if 'selection-cams' in relative.parts or relative.parts[0] in ('cams', 'seg_prob_ms', 'seg_pred_ms'):
             continue
-        target = destination / relative
-        with source.open('rb') as stream:
-            copy_atomic(stream, target)
-        files[relative.as_posix()] = digest(target)
+        files[relative.as_posix()] = digest(source)
     manifest = dict(schema=1, files=files)
-    (destination / 'run-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
     archive_path = destination.with_suffix('.zip')
+    archive_path.parent.mkdir(parents=True, exist_ok=True)
     temporary = archive_path.with_name(archive_path.name + '.part')
-    with zipfile.ZipFile(temporary, 'w', compression=zipfile.ZIP_STORED, allowZip64=True) as archive:
-        # Archive only the current manifest's files; ignore stale files from a prior export.
-        for name in list(files) + ['run-manifest.json']:
-            archive.write(destination / name, name)
-    temporary.replace(archive_path)
+    try:
+        with zipfile.ZipFile(temporary, 'w', compression=zipfile.ZIP_STORED, allowZip64=True) as archive:
+            for name in files:
+                archive.write(output / name, name)
+            archive.writestr('run-manifest.json', json.dumps(manifest, indent=2) + '\n')
+        temporary.replace(archive_path)
+    finally:
+        if temporary.exists():
+            temporary.unlink()
     print(f'Saved run for download/private dataset: {archive_path}', flush=True)
     return archive_path
 
@@ -188,21 +191,33 @@ def main():
                                         'pseudo', 'phase2-pilot', 'phase2', 'evaluate', 'crf', 'preserve'])
     parser.add_argument('--inputs', default='/kaggle/input')
     parser.add_argument('--work', default='/kaggle/working')
+    parser.add_argument('--scratch', help='Temporary runtime/data/CAM storage, outside saved outputs')
     parser.add_argument('--skip-install', action='store_true', help='Reuse an existing accepted environment')
     parser.add_argument('--resume-from', default='auto', help='auto, none, or an attached exported-run directory')
     args = parser.parse_args()
     work = Path(args.work).resolve()
     work.mkdir(parents=True, exist_ok=True)
-    python = work / 'weaktr-env/bin/python'
-    data, output, pretrained = work / 'data', work / 'weaktr-artifacts', work / 'weights/deit_small_patch16_224.pth'
+    scratch = Path(args.scratch or ('/kaggle/tmp/weaktr-runtime' if str(work) == '/kaggle/working'
+                                   else str(work.parent / (work.name + '-scratch')))).resolve()
+    migrate_temporary_files(work, scratch)
+    report_storage(work, scratch)
+    python = scratch / 'weaktr-env/bin/python'
+    data, output, pretrained = scratch / 'data', work / 'weaktr-artifacts', scratch / 'weights/deit_small_patch16_224.pth'
     env = os.environ.copy()
     env['PYTHONPATH'] = os.pathsep.join([str(ROOT), str(ROOT / 'OnlineRetraining'), env.get('PYTHONPATH', '')])
     env['PYTHONUNBUFFERED'] = '1'
     env['PYTHONHASHSEED'] = '504'
     env['DATASET'] = str(data)
+    env['WEAKTR_RUNTIME'] = str(scratch)
+    env['PIP_NO_CACHE_DIR'] = '1'
+    env['UV_NO_CACHE'] = '1'
+    for variable, name in [('TMPDIR', 'tmp'), ('JOBLIB_TEMP_FOLDER', 'joblib')]:
+        folder = scratch / name
+        folder.mkdir(exist_ok=True)
+        env[variable] = str(folder)
     if args.stage == 'prepare':
         env['CUDA_VISIBLE_DEVICES'] = ''  # No GPU work during preparation, even if enabled accidentally.
-        restore_inputs(args.inputs, work)
+        restore_inputs(args.inputs, scratch)
         # Restore before setup/preflight write this session's records into the run directory.
         restore_run(args.inputs, output, args.resume_from)
         if not args.skip_install:
@@ -228,7 +243,7 @@ def main():
         print('Reusing the saved complete pseudo-label collection; CAM/CRF regeneration is unnecessary.', flush=True)
         return
     command = [python, '-m', 'reproduction.launch', stage, '--data', data,
-               '--output', output, '--pretrained', pretrained]
+               '--output', output, '--pretrained', pretrained, '--scratch', scratch / 'artifacts']
     if stage in ('phase1', 'phase2'):
         checkpoint = output / stage / 'checkpoint.pth'
         if checkpoint.exists():
