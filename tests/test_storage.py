@@ -42,6 +42,8 @@ def test_cam_and_probability_producers_match_consumers_in_scratch(tmp_path):
         return Path(command[command.index(name) + 1])
     assert option('phase1', '--cam-npy-dir') == scratch / 'phase1/selection-cams'
     assert option('cams', '--cam-npy-dir') == option('pseudo', '--predict_dir') == scratch / 'cams'
+    assert option('cam-eval', '--predict_dir') == scratch / 'cams'
+    assert option('cam-eval', '--logfile') == output / 'cam-eval.txt'
     assert option('pseudo', '--out-dir') == option('phase2', '--ann-dir') == output / 'pseudo'
     assert option('evaluate', '--predict-dir') == option('crf', '--predict-dir') == scratch / 'seg_prob_ms'
     assert option('phase1', '--output_dir') == output / 'phase1'

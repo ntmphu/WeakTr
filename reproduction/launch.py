@@ -38,6 +38,11 @@ def commands(stage, data, output, pretrained, resume='', seed=504, scratch=None)
         return [([sys.executable, 'evaluation.py', '--list', 'voc12/train_aug_id.txt',
                   '--data-path', str(data), '--type', 'npy', '--predict_dir', str(cams),
                   '--out-dir', str(pseudo), '--t', '43', '--out-crf'], ROOT)]
+    if stage == 'cam-eval':
+        return [([sys.executable, 'evaluation.py', '--list', 'voc12/train_id.txt',
+                  '--data-path', str(data), '--type', 'npy', '--predict_dir', str(cams),
+                  '--curve', 'True', '--start', '40', '--end', '60',
+                  '--logfile', str(output / 'cam-eval.txt')], ROOT)]
     if stage == 'phase2':
         command = [sys.executable, '-m', 'segm.train', '--log-dir', str(phase2),
                    '--dataset', 'pascal_voc', '--backbone', 'deit_small_patch16_224',
@@ -66,7 +71,7 @@ def commands(stage, data, output, pretrained, resume='', seed=504, scratch=None)
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('stage', choices=['preflight', 'phase1', 'cams', 'pseudo', 'phase2', 'evaluate', 'crf'])
+    parser.add_argument('stage', choices=['preflight', 'phase1', 'cams', 'cam-eval', 'pseudo', 'phase2', 'evaluate', 'crf'])
     parser.add_argument('--data', required=True, help='Parent of voc12/VOCdevkit/VOC2012')
     parser.add_argument('--output', required=True)
     parser.add_argument('--scratch', help='Directory for temporary CAM/probability collections')
@@ -103,8 +108,9 @@ def main():
     # Official ImageNet checkpoint's published SHA256 prefix; full hash is recorded.
     if not sha256(args.pretrained).startswith('cd65a155'):
         raise ValueError('Expected official DeiT-S ImageNet checkpoint (SHA256 prefix cd65a155).')
-    if args.stage == 'pseudo':
-        for name in read_ids(ROOT / 'voc12/train_aug_id.txt'):
+    if args.stage in ('pseudo', 'cam-eval'):
+        cam_list = 'train_aug_id.txt' if args.stage == 'pseudo' else 'train_id.txt'
+        for name in read_ids(ROOT / 'voc12' / cam_list):
             if not (Path(args.scratch or output) / 'cams' / (name + '.npy')).is_file():
                 raise FileNotFoundError(f'Missing training CAM: {name}')
     output.mkdir(parents=True, exist_ok=True)

@@ -1,6 +1,6 @@
 # Project context and handoff
 
-Updated: 2026-11-09, Asia/Saigon.
+Updated: 2026-11-13, Asia/Saigon.
 
 ## Goal and decisions
 
@@ -17,6 +17,8 @@ Reproduce **WeakTr: Exploring Plain Vision Transformer for Weakly-supervised Sem
 - Storage: local runtime disk while training, saved Kaggle outputs and local backups between sessions; optional archive on the user's 400 GB Drive.
 
 ## Current state
+
+2026-11-13 upload notebook: `WeakTr_Kaggle.ipynb` is now a clean 22-cell resume notebook, defaulting to `START_FROM='cams'`, automatic restoration, optional GPU smoke off, and optional Phase-2 pilot off. It checks latest/best full Phase-1 snapshots before proceeding, skips Phase-1 training by default, and includes the new `cam-eval` stage. Setup probes Python 3.10/trainer/CRF imports before choosing `--skip-install`. The prior locally executed notebook was backed up under ignored `artifacts/notebook-backups/`. All 38 CPU tests pass, including execution of notebook stage cells with a fake launcher for CAM, Phase-2, final-evaluation and pilot routes, plus usable/failed interpreter probes. Notebook schema and all code cells validate/compile; saved outputs are cleared. Upload and run on Kaggle still requires actual remote execution.
 
 2026-11-13 Phase-1 result update superseding the uncertainty below: the user provided all 60 continuous JSON log rows, epochs 0-59. Best selection CAM mIoU is 65.83671942199474% at epoch 33 (human epoch 34), threshold 0.42; last-epoch CAM mIoU is 64.39329263999188% and classification mAP is 95.26802583583123%. The supplied saved-run manifest lists latest, previous, best-classification and best-CAM Phase-1 snapshots. Their binary contents/hashes and saved latest epoch have not been independently checked. Phase-1 training is complete according to the log; complete 10,582-image multiscale CAM/pseudo-label generation, Phase 2, and final segmentation evaluation are still unconfirmed. Continue with the best CAM checkpoint, not Phase-1 retraining. Selection CAM mIoU is not the final segmentation validation score.
 

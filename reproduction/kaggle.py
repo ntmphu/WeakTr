@@ -187,7 +187,7 @@ def pseudo_labels_ready(output):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('stage', choices=['prepare', 'smoke', 'phase1-pilot', 'phase1', 'cams',
+    parser.add_argument('stage', choices=['prepare', 'smoke', 'phase1-pilot', 'phase1', 'cams', 'cam-eval',
                                         'pseudo', 'phase2-pilot', 'phase2', 'evaluate', 'crf', 'preserve'])
     parser.add_argument('--inputs', default='/kaggle/input')
     parser.add_argument('--work', default='/kaggle/working')
@@ -239,6 +239,12 @@ def main():
              '--record', output / 'gpu-smoke.json'], env)
         return
     stage = args.stage.replace('-pilot', '')
+    if stage == 'cam-eval' and pseudo_labels_ready(output) and not all(
+            (scratch / 'artifacts/cams' / (name + '.npy')).is_file()
+            for name in (ROOT / 'voc12/train_id.txt').read_text().splitlines()):
+        print('Complete saved pseudo-labels are available; temporary CAMs are absent. '
+              'Skipping repeated CAM evaluation.', flush=True)
+        return
     if stage in ('cams', 'pseudo') and pseudo_labels_ready(output):
         print('Reusing the saved complete pseudo-label collection; CAM/CRF regeneration is unnecessary.', flush=True)
         return
