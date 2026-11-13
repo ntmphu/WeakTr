@@ -222,11 +222,18 @@ def test_official_launcher_settings(tmp_path):
     assert str(tmp_path / 'output/phase2/checkpoint.pth') in evaluation
 
 
-def test_kaggle_prepare_rebuilds_unusable_python(tmp_path, monkeypatch):
-    python = tmp_path / 'weaktr-env' / 'bin' / 'python'
+@pytest.mark.parametrize('explicit_runtime', [False, True])
+def test_kaggle_prepare_rebuilds_unusable_python(tmp_path, monkeypatch, explicit_runtime):
+    work = tmp_path / 'work'
+    runtime = tmp_path / 'scratch' if explicit_runtime else work
+    if explicit_runtime:
+        monkeypatch.setenv('WEAKTR_RUNTIME', str(runtime))
+    else:
+        monkeypatch.delenv('WEAKTR_RUNTIME', raising=False)
+    python = runtime / 'weaktr-env' / 'bin' / 'python'
     python.parent.mkdir(parents=True)
     python.write_text('stale interpreter')
-    (tmp_path / 'weaktr-bootstrap' / 'uv').mkdir(parents=True)
+    (runtime / 'weaktr-bootstrap' / 'uv').mkdir(parents=True)
     monkeypatch.setattr(kaggle.platform, 'system', lambda: 'Linux')
     monkeypatch.setattr(kaggle.platform, 'machine', lambda: 'x86_64')
     ready = False
@@ -249,12 +256,12 @@ def test_kaggle_prepare_rebuilds_unusable_python(tmp_path, monkeypatch):
 
     monkeypatch.setattr(kaggle, 'run', fake_run)
     monkeypatch.setattr(kaggle.subprocess, 'run', fake_subprocess_run)
-    result = kaggle.install_environment(tmp_path, os.environ.copy())
+    result = kaggle.install_environment(work, os.environ.copy())
 
     assert result == python
     assert any('venv' in command and '--clear' in command for command in commands)
     assert len(commands) == 5
-    assert (tmp_path / 'weaktr-artifacts' / 'environment-freeze.txt').is_file()
+    assert (work / 'weaktr-artifacts' / 'environment-freeze.txt').is_file()
 
 
 def test_recovery_comparison_detects_state_divergence():
