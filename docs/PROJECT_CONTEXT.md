@@ -1,6 +1,6 @@
 # Project context and handoff
 
-Updated: 2026-11-13, Asia/Saigon.
+Updated: 2026-11-14, Asia/Saigon.
 
 ## Goal and decisions
 
@@ -17,6 +17,10 @@ Reproduce **WeakTr: Exploring Plain Vision Transformer for Weakly-supervised Sem
 - Storage: local runtime disk while training, saved Kaggle outputs and local backups between sessions; optional archive on the user's 400 GB Drive.
 
 ## Current state
+
+2026-11-14 Phase-2 timeout: `weaktr-resume.log` contains completed validation stats for epochs 0-28 (29/100 complete), best/latest mean IoU 69.53% at epoch 28. Epoch 29 was interrupted after the last logged batch 900/2646. The last export message is at 6529.9 session seconds, before Phase-2 training, so that ZIP must not be assumed to contain the latest checkpoint. The user confirms active Phase-2 checkpoints and pseudo-labels remain accessible. Resume from the complete active `weaktr-artifacts` folder; notebook setup now discovers it and computes/verifies transfer hashes when no export manifest exists. Binary checkpoint epoch/hash still needs remote confirmation. Recent median epoch times are 1038s training + 199s validation; 71 remaining epochs project to approximately 24.4 GPU hours plus setup/evaluation. Multiscale CAM evaluation in this log reached 66.011% at threshold 0.43.
+
+The notebook now defaults to `START_FROM='phase2'`, requires actual Phase-2 recovery files, caps each invocation at 24 additional epochs, and suppresses final evaluation until the saved latest snapshot reaches epoch 99. The 100-epoch schedule and scheduler are unchanged. At the observed speed, 24 epochs take about 8.3 hours; this count limit is not a universal wall-clock guarantee. Each chunk exits normally to export recovery files. New notebook remote execution remains pending.
 
 2026-11-13 upload notebook: `WeakTr_Kaggle.ipynb` is now a clean 22-cell resume notebook, defaulting to `START_FROM='cams'`, automatic restoration, optional GPU smoke off, and optional Phase-2 pilot off. It checks latest/best full Phase-1 snapshots before proceeding, skips Phase-1 training by default, and includes the new `cam-eval` stage. Setup probes Python 3.10/trainer/CRF imports before choosing `--skip-install`. The prior locally executed notebook was backed up under ignored `artifacts/notebook-backups/`. All 38 CPU tests pass, including execution of notebook stage cells with a fake launcher for CAM, Phase-2, final-evaluation and pilot routes, plus usable/failed interpreter probes. Notebook schema and all code cells validate/compile; saved outputs are cleared. Upload and run on Kaggle still requires actual remote execution.
 

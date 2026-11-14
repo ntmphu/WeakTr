@@ -1,6 +1,6 @@
 # WeakTr VOC Reproduction: Implementation Plan
 
-Status updated 2026-11-13 (Asia/Saigon): implementation and CPU checks are complete; the user reports both GPU smoke checks passed and supplied a complete 60-epoch Phase-1 log. Storage recovery, full GPU resume verification, pseudo-label generation, Phase 2 and final evaluation remain pending confirmation. Best logged selection CAM mIoU is 65.8367%; this is not final segmentation mIoU.
+Status updated 2026-11-14 (Asia/Saigon): Phase 1 completed all 60 epochs; multiscale CAM/pseudo-label generation completed sufficiently to train Phase 2. The latest supplied log confirms 29/100 Phase-2 epochs and validation mIoU 69.53%, then a 12-hour timeout interrupted epoch 30. Active checkpoint files are user-reported accessible; binary epoch/hash and remote resume still need confirmation. Final 100-epoch segmentation evaluation remains pending.
 
 ## Summary
 
@@ -82,6 +82,8 @@ The deliverable is a repeatable experiment with honest measured results. Matchin
 
 ## Current checklist and results
 
+2026-11-14 timeout recovery: logged 29 completed Phase-2 epochs, best/latest raw epoch-validation mIoU 69.53%; the 30th was interrupted. The old ZIP export predates Phase 2. Active artifact folder recovery now supports missing export manifests by computing transfer hashes; original data/checkpoints are not substituted. The updated notebook defaults to Phase 2, discovers a unique active artifact folder with Phase-1 snapshots, Phase-2 snapshot and pseudo-labels, and refuses to silently restart from zero if recovery files are missing. Phase-2 invocations are capped at 24 additional epochs, retaining the original 100-epoch scheduler, and final evaluation waits for a completed 100-epoch checkpoint. The full 45-test suite passed with pinned pytest 7.4.4 and inherited `WEAKTR_RUNTIME` (`python -m pytest tests -q --tb=short -p no:cacheprovider --basetemp artifacts/pytest-timeout-recovery-verified`, isolated pytest on `PYTHONPATH`, plugin autoload disabled); a subsequent focused storage suite verifies actual CPU checkpoint-epoch reading. Notebook schema/code compilation pass. Session timing forecast: 1237 seconds/epoch, approximately 24.4 hours for 71 remaining epochs, excluding setup and final evaluation; a 24-epoch chunk is approximately 8.3 hours at that measured speed.
+
 2026-11-13 resume notebook delivery: rebuilt the upload notebook for the completed Phase-1 run, with checkpoint metadata validation, default Phase-1 skip, integrated multiscale CAM evaluation, pseudo-label preservation, optional Phase-2 pilot, and full Phase-2/final-evaluation routes. Existing complete environments are reused automatically. Prior local outputs were backed up outside Git; upload outputs are cleared. Schema/code compilation pass and all 38 CPU tests pass with pinned pytest 7.4.4 and inherited `WEAKTR_RUNTIME` (`python -m pytest tests -q --tb=short -p no:cacheprovider --basetemp artifacts/pytest-resume-notebook-final`, isolated pytest on `PYTHONPATH`, plugin autoload disabled). Tests verify stage ordering never calls Phase 1 in default/Phase-2/evaluation resume routes. Remote execution of the new notebook remains pending.
 
 2026-11-13 preparation test isolation: the new Kaggle log confirms trainer/CRF imports passed in scratch, then 28 tests passed and the environment-repair test failed because it inherited `WEAKTR_RUNTIME` and expected its mock interpreter under `tmp_path`. The test now controls that variable and covers both default and explicit scratch layouts. All 30 tests pass locally with `WEAKTR_RUNTIME=/kaggle/tmp/weaktr-runtime`, pinned pytest 7.4.4 and plugin autoload disabled (`python -m pytest tests -q --tb=short -p no:cacheprovider --basetemp artifacts/pytest-inherited-runtime-verified`). No trainer, installed runtime, checkpoint or resume behavior changed. The existing installed Kaggle environment can be reused with `prepare --skip-install`; final Kaggle preflight rerun remains pending.
@@ -106,7 +108,7 @@ Workflow clarification (2026-11-09): the user expects notebook import or Git clo
 - [ ] Dataset preflight and GPU compatibility checks passed.
 - [ ] Runtime forecast and restart test completed.
 - [x] Phase-1 60-epoch training completed according to the supplied log (saved checkpoint bytes still need verification).
-- [ ] Complete multiscale CAMs and CRF pseudo-labels generated.
+- [x] Multiscale CAMs and CRF pseudo-labels generated; subsequent Phase-2 training is logged.
 - [ ] Phase 2 completed.
 - [ ] Final evaluation and report completed.
 

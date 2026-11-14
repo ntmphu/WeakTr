@@ -161,6 +161,22 @@ def test_interrupted_restore_finishes_instead_of_treating_partial_copy_as_curren
     assert not (work / '.restore-in-progress.json').exists()
 
 
+def test_restore_active_phase2_folder_when_timeout_prevented_manifest_export(tmp_path):
+    source, output = tmp_path / 'cancelled/weaktr-artifacts', tmp_path / 'restored'
+    files = {'phase2/checkpoint.pth': b'latest phase2', 'phase2/variant.yml': b'variant',
+             'pseudo/a.png': b'mask', 'phase1/checkpoint_best_mIoU.pth': b'best CAM'}
+    for name, content in files.items():
+        path = source / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+    (source / 'cams').mkdir()
+    (source / 'cams/a.npy').write_bytes(b'temporary CAM')
+    restore_run(tmp_path / 'cancelled', output, resume_from=str(source))
+    for name, content in files.items():
+        assert (output / name).read_bytes() == content
+    assert not (output / 'cams').exists()
+
+
 def test_prepare_restores_before_installation_writes_new_session_metadata(tmp_path, monkeypatch):
     work, inputs = tmp_path / 'work', tmp_path / 'inputs'
     output = work / 'weaktr-artifacts'

@@ -1,9 +1,11 @@
 from pathlib import Path
+import sys
 import zipfile
 
 import pytest
 
 from reproduction.kaggle import export_run
+from reproduction import kaggle
 from reproduction.launch import commands
 from reproduction.storage import migrate_temporary_files
 
@@ -66,3 +68,33 @@ def test_failed_archive_keeps_previous_export_and_cleans_partial_copy(tmp_path, 
     assert archive.read_bytes() == previous
     assert checkpoint.read_bytes() == b'checkpoint'
     assert not archive.with_name(archive.name + '.part').exists()
+
+
+@pytest.mark.parametrize('completed,expected_stop', [(29, 53), (77, 100), (100, 100)])
+def test_phase2_session_cap_preserves_resume_and_exports(tmp_path, monkeypatch, completed, expected_stop):
+    work, scratch = tmp_path / 'working', tmp_path / 'scratch'
+    checkpoint = work / 'weaktr-artifacts/phase2/checkpoint.pth'
+    checkpoint.parent.mkdir(parents=True)
+    checkpoint.write_bytes(b'checkpoint')
+    python = scratch / 'weaktr-env/bin/python'
+    python.parent.mkdir(parents=True)
+    python.write_bytes(b'python')
+    monkeypatch.setattr(kaggle, 'completed_phase2_epochs', lambda *args: completed)
+    monkeypatch.setattr(kaggle, 'report_storage', lambda *args: None)
+    calls, exports = [], []
+    monkeypatch.setattr(kaggle, 'run', lambda command, env: calls.append([str(x) for x in command]))
+    monkeypatch.setattr(kaggle, 'export_run', lambda *args: exports.append(args))
+    monkeypatch.setattr('sys.argv', ['kaggle.py', 'phase2', '--work', str(work), '--scratch', str(scratch),
+                                    '--epochs-this-session', '24'])
+    kaggle.main()
+    assert calls[0][calls[0].index('--stop-after-epoch') + 1] == str(expected_stop)
+    assert calls[0][calls[0].index('--resume') + 1] == str(checkpoint)
+    assert len(exports) == 1
+
+
+def test_completed_phase2_epochs_reads_trusted_snapshot_on_cpu(tmp_path):
+    import torch
+    checkpoint = tmp_path / 'checkpoint.pth'
+    assert kaggle.completed_phase2_epochs(sys.executable, checkpoint) == 0
+    torch.save({'stage': 'phase2', 'format_version': 1, 'epoch': 28}, checkpoint)
+    assert kaggle.completed_phase2_epochs(sys.executable, checkpoint) == 29

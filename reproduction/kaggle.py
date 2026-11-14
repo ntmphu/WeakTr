@@ -16,6 +16,19 @@ from reproduction.storage import migrate_temporary_files, report_storage
 MMCV_WHEELS = 'https://download.openmmlab.com/mmcv/dist/cu117/torch1.13/index.html'
 
 
+def completed_phase2_epochs(python, checkpoint, env=None):
+    checkpoint = Path(checkpoint)
+    if not checkpoint.is_file():
+        return 0
+    script = ('import sys; from reproduction.checkpoint import load_checkpoint; '
+              's = load_checkpoint(sys.argv[1]); '
+              'assert s.get("stage") == "phase2" and s.get("format_version") == 1, '
+              '"Expected a full Phase-2 checkpoint"; print(s["epoch"] + 1)')
+    result = subprocess.run([str(python), '-c', script, str(checkpoint)], cwd=ROOT, env=env,
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+    return int(result.stdout.strip())
+
+
 def run(command, env=None):
     print(subprocess.list2cmdline([str(item) for item in command]), flush=True)
     subprocess.run([str(item) for item in command], cwd=ROOT, env=env, check=True)
@@ -115,7 +128,16 @@ def restore_run(inputs, output, resume_from='auto'):
         source_root = candidates[0].parent
     else:
         source_root = Path(resume_from).resolve()
-    manifest = json.loads((source_root / 'run-manifest.json').read_text())
+    manifest_path = source_root / 'run-manifest.json'
+    if manifest_path.is_file():
+        manifest = json.loads(manifest_path.read_text())
+    elif resume_from != 'auto' and (source_root / 'phase2/checkpoint.pth').is_file():
+        # A cancelled run may retain active files newer than its last exported ZIP.
+        manifest = dict(schema=1, files=run_files(source_root))
+        print('Recovering active Phase-2 artifacts without an export manifest; '
+              'computing and verifying transfer hashes from this trusted source.', flush=True)
+    else:
+        raise ValueError(f'No saved-run manifest or active Phase-2 checkpoint found in {source_root}.')
     if manifest.get('schema') != 1 or not manifest.get('files'):
         raise ValueError('Invalid saved-run manifest.')
     output.mkdir(parents=True, exist_ok=True)
@@ -141,13 +163,9 @@ def restore_run(inputs, output, resume_from='auto'):
     return source_root
 
 
-def export_run(output, destination):
-    """Export checkpoints, configs and pseudo-labels without intermediate CAM collections."""
-    output, destination = Path(output).resolve(), Path(destination).resolve()
-    if not list(output.glob('phase*/checkpoint.pth')):
-        raise ValueError('No training checkpoints to preserve yet.')
-    if destination == output or output in destination.parents:
-        raise ValueError('Resume export must be outside the active run directory.')
+def run_files(output):
+    """Hash the durable files shared by export and active-folder recovery."""
+    output = Path(output).resolve()
     files = {}
     for source in sorted(output.rglob('*')):
         if not source.is_file():
@@ -159,6 +177,17 @@ def export_run(output, destination):
         if 'selection-cams' in relative.parts or relative.parts[0] in ('cams', 'seg_prob_ms', 'seg_pred_ms'):
             continue
         files[relative.as_posix()] = digest(source)
+    return files
+
+
+def export_run(output, destination):
+    """Export checkpoints, configs and pseudo-labels without intermediate CAM collections."""
+    output, destination = Path(output).resolve(), Path(destination).resolve()
+    if not list(output.glob('phase*/checkpoint.pth')):
+        raise ValueError('No training checkpoints to preserve yet.')
+    if destination == output or output in destination.parents:
+        raise ValueError('Resume export must be outside the active run directory.')
+    files = run_files(output)
     manifest = dict(schema=1, files=files)
     archive_path = destination.with_suffix('.zip')
     archive_path.parent.mkdir(parents=True, exist_ok=True)
@@ -192,9 +221,13 @@ def main():
     parser.add_argument('--inputs', default='/kaggle/input')
     parser.add_argument('--work', default='/kaggle/working')
     parser.add_argument('--scratch', help='Temporary runtime/data/CAM storage, outside saved outputs')
+    parser.add_argument('--epochs-this-session', type=int,
+                        help='Phase-2 epoch cap for this invocation; full scheduler remains 100 epochs')
     parser.add_argument('--skip-install', action='store_true', help='Reuse an existing accepted environment')
     parser.add_argument('--resume-from', default='auto', help='auto, none, or an attached exported-run directory')
     args = parser.parse_args()
+    if args.epochs_this_session is not None and (args.stage != 'phase2' or args.epochs_this_session < 1):
+        parser.error('--epochs-this-session requires phase2 and a positive epoch count')
     work = Path(args.work).resolve()
     work.mkdir(parents=True, exist_ok=True)
     scratch = Path(args.scratch or ('/kaggle/tmp/weaktr-runtime' if str(work) == '/kaggle/working'
@@ -256,6 +289,12 @@ def main():
             command += ['--resume', checkpoint]
         if args.stage.endswith('-pilot'):
             command += ['--stop-after-epoch', '1']
+        elif stage == 'phase2' and args.epochs_this_session is not None:
+            completed = completed_phase2_epochs(python, checkpoint, env)
+            stop_epoch = min(100, completed + args.epochs_this_session)
+            command += ['--stop-after-epoch', str(stop_epoch)]
+            print(f'Phase 2: {completed}/100 epochs completed; this session stops at '
+                  f'{stop_epoch}/100 and exports recovery files.', flush=True)
     try:
         run(command, env)
     finally:
