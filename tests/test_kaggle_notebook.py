@@ -17,9 +17,9 @@ def notebook_namespace():
     configuration = ast.parse(notebook.cells[1].source)
     for node in configuration.body:
         if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name):
-            if node.targets[0].id in ('STAGES', 'START_FROM', 'RUN_SMOKE', 'PHASE2_PILOT', 'PHASE2_EPOCHS_THIS_SESSION'):
+            if node.targets[0].id in ('STAGES', 'START_FROM', 'RUN_SMOKE', 'PHASE2_PILOT', 'PHASE2_EPOCHS_THIS_SESSION', 'MIN_PHASE2_COMPLETED_EPOCHS'):
                 namespace[node.targets[0].id] = ast.literal_eval(node.value)
-        elif isinstance(node, ast.FunctionDef) and node.name == 'should_run':
+        elif isinstance(node, ast.FunctionDef) and node.name in ('should_run', 'phase2_complete'):
             exec(compile(ast.Module(body=[node], type_ignores=[]), '<configuration>', 'exec'), namespace)
     return notebook, namespace
 
@@ -30,7 +30,8 @@ def test_upload_notebook_is_clean_and_valid():
     assert namespace['START_FROM'] == 'phase2'
     assert namespace['RUN_SMOKE'] is False
     assert namespace['PHASE2_PILOT'] is False
-    assert namespace['PHASE2_EPOCHS_THIS_SESSION'] == 30
+    assert namespace['PHASE2_EPOCHS_THIS_SESSION'] == 11
+    assert namespace['MIN_PHASE2_COMPLETED_EPOCHS'] == 89
     for cell in notebook.cells:
         if cell.cell_type == 'code':
             assert cell.outputs == []
@@ -39,9 +40,9 @@ def test_upload_notebook_is_clean_and_valid():
 
 
 @pytest.mark.parametrize('start,pilot,expected', [
-    ('cams', False, ['cams', 'cam-eval', 'pseudo', 'preserve', 'phase2', 'evaluate', 'crf', 'preserve']),
-    ('phase2', False, ['phase2', 'evaluate', 'crf', 'preserve']),
-    ('evaluate', False, ['evaluate', 'crf', 'preserve']),
+    ('cams', False, ['cams', 'cam-eval', 'pseudo', 'preserve', 'phase2', 'evaluate', 'crf', 'report', 'preserve']),
+    ('phase2', False, ['phase2', 'evaluate', 'crf', 'report', 'preserve']),
+    ('evaluate', False, ['evaluate', 'crf', 'report', 'preserve']),
     ('cams', True, ['cams', 'cam-eval', 'pseudo', 'preserve', 'phase2-pilot']),
 ])
 def test_resume_stage_sequence(start, pilot, expected):
@@ -62,10 +63,24 @@ def test_incomplete_session_exports_without_running_final_evaluation():
     namespace.update(START_FROM='phase2', PHASE2_PILOT=False, phase2_complete=lambda: False)
     calls = []
     namespace['workflow'] = calls.append
-    for cell in notebook.cells:
-        if 'weaktr-stage' in cell.metadata.get('tags', []):
-            exec(compile(cell.source, '<stage-cell>', 'exec'), namespace)
+    with pytest.raises(RuntimeError, match='did not reach epoch 100'):
+        for cell in notebook.cells:
+            if 'weaktr-stage' in cell.metadata.get('tags', []):
+                exec(compile(cell.source, '<stage-cell>', 'exec'), namespace)
     assert calls == ['phase2']  # the phase2 launcher exports before returning
+
+
+@pytest.mark.parametrize('completed', [59, 89, 100])
+def test_final_session_checks_actual_restored_epoch(tmp_path, monkeypatch, completed):
+    notebook, namespace = notebook_namespace()
+    monkeypatch.setattr(subprocess, 'run', lambda *args, **kwargs:
+                        subprocess.CompletedProcess(args[0], 0, stdout=str(completed)))
+    namespace.update(SCRATCH=tmp_path, WORK=tmp_path, REPO=tmp_path, subprocess=subprocess)
+    if completed < 89:
+        with pytest.raises(RuntimeError, match='Attach the newest 89-epoch saved run'):
+            namespace['phase2_complete']()
+    else:
+        assert namespace['phase2_complete']() is (completed == 100)
 
 
 @pytest.mark.parametrize('probe_result,skip_install', [(0, True), (1, False), ('denied', False)])

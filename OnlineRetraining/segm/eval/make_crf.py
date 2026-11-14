@@ -2,6 +2,7 @@ import joblib
 import os
 import numpy as np
 import argparse
+import json
 import torch
 from PIL import Image
 import pandas as pd
@@ -110,6 +111,7 @@ if __name__ == '__main__':
     parser.add_argument("--data-path", default='data/voc12')
     parser.add_argument("--predict-dir", default=None, type=str)
     parser.add_argument("--predict-png-dir", default=None, type=str)
+    parser.add_argument('--scores-file', default=None, type=str)
     parser.add_argument("--img-path", default=None, type=str)
     parser.add_argument("--n-jobs", default=10, type=int)
     parser.add_argument("--num-cls", default=21, type=int)
@@ -252,3 +254,11 @@ if __name__ == '__main__':
     print('\n')
     print(f'FP = {fp * 100}, FN = {fn * 100}')
     print(f'Prediction = {prediction * 100}, Recall = {recall * 100}')
+    if args.scores_file:
+        scores_path = Path(args.scores_file)
+        scores_path.parent.mkdir(parents=True, exist_ok=True)
+        scores_path.write_text(json.dumps({
+            'mIoU': float(miou * 100), 'count': len(name_list), 'postprocessing': 'CRF',
+            'per_class_iou': {name: float(value) for name, value in loglist.items()
+                              if name not in ('mIoU', 'FP', 'FN', 'Prediction', 'Recall')},
+        }, indent=2) + '\n')

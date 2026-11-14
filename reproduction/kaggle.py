@@ -217,7 +217,7 @@ def pseudo_labels_ready(output):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('stage', choices=['prepare', 'smoke', 'phase1-pilot', 'phase1', 'cams', 'cam-eval',
-                                        'pseudo', 'phase2-pilot', 'phase2', 'evaluate', 'crf', 'preserve'])
+                                        'pseudo', 'phase2-pilot', 'phase2', 'evaluate', 'crf', 'report', 'preserve'])
     parser.add_argument('--inputs', default='/kaggle/input')
     parser.add_argument('--work', default='/kaggle/working')
     parser.add_argument('--scratch', help='Temporary runtime/data/CAM storage, outside saved outputs')
@@ -265,6 +265,10 @@ def main():
         raise FileNotFoundError('Run prepare first to create the isolated environment.')
     if args.stage == 'preserve':
         export_run(output, work / 'weaktr-resume')
+        return
+    if args.stage == 'report':
+        env['CUDA_VISIBLE_DEVICES'] = ''
+        run([python, '-m', 'reproduction.finalize', '--output', output], env)
         return
     env['CUDA_VISIBLE_DEVICES'] = '0'
     if args.stage == 'smoke':

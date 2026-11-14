@@ -65,6 +65,7 @@ def commands(stage, data, output, pretrained, resume='', seed=504, scratch=None)
         return [([sys.executable, '-m', 'segm.eval.make_crf', '--list', 'val.txt',
                   '--data-path', str(data), '--predict-dir', str(temporary / 'seg_prob_ms'),
                   '--predict-png-dir', str(output / 'seg_pred_ms'), '--num-cls', '21',
+                  '--scores-file', str(output / 'phase2/scores_ms_crf.json'),
                   '--dataset', 'voc12'], ROOT / 'OnlineRetraining')]
     raise ValueError(stage)
 
@@ -121,9 +122,12 @@ def main():
     env['PYTHONHASHSEED'] = str(args.seed)
     env['PYTHONUNBUFFERED'] = '1'
     record_path = output / f'{args.stage}-record.json'
+    source_checkpoints = [args.pretrained] + ([args.resume] if args.resume else [])
+    if args.stage in ('evaluate', 'crf') and not args.resume:
+        source_checkpoints.append(output / 'phase2/checkpoint.pth')
     record = write_record(record_path, dict(arguments=vars(args), validation=validation,
                                            commands=[command for command, _ in jobs]),
-                          [args.pretrained] + ([args.resume] if args.resume else []))
+                          source_checkpoints)
     started = time.monotonic()
     try:
         log_path = output / f'{args.stage}-{time.time_ns()}.log'

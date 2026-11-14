@@ -48,6 +48,7 @@ def test_cam_and_probability_producers_match_consumers_in_scratch(tmp_path):
     assert option('cam-eval', '--logfile') == output / 'cam-eval.txt'
     assert option('pseudo', '--out-dir') == option('phase2', '--ann-dir') == output / 'pseudo'
     assert option('evaluate', '--predict-dir') == option('crf', '--predict-dir') == scratch / 'seg_prob_ms'
+    assert option('crf', '--scores-file') == output / 'phase2/scores_ms_crf.json'
     assert option('phase1', '--output_dir') == output / 'phase1'
     assert option('phase2', '--log-dir') == output / 'phase2'
 
