@@ -30,7 +30,7 @@ def test_upload_notebook_is_clean_and_valid():
     assert namespace['START_FROM'] == 'phase2'
     assert namespace['RUN_SMOKE'] is False
     assert namespace['PHASE2_PILOT'] is False
-    assert namespace['PHASE2_EPOCHS_THIS_SESSION'] == 24
+    assert namespace['PHASE2_EPOCHS_THIS_SESSION'] == 30
     for cell in notebook.cells:
         if cell.cell_type == 'code':
             assert cell.outputs == []
