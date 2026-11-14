@@ -1,6 +1,6 @@
 # Project context and handoff
 
-Updated: 2026-11-14, Asia/Saigon.
+Updated: 2026-11-15, Asia/Saigon.
 
 ## Goal and decisions
 
@@ -17,6 +17,8 @@ Reproduce **WeakTr: Exploring Plain Vision Transformer for Weakly-supervised Sem
 - Storage: local runtime disk while training, saved Kaggle outputs and local backups between sessions; optional archive on the user's 400 GB Drive.
 
 ## Current state
+
+2026-11-15 successful resumed chunk: the replaced `weaktr-resume.log` logs epochs 29-58, then a new resume ZIP export at session second 38457.8, a checkpoint summary of 59/100 completed epochs, and successful nbconvert output writes. Latest epoch-validation mIoU is 70.39%; best is 70.97% at epoch 56 (human epoch 57). This establishes observed GPU continuation from the prior 29-epoch run, not a controlled interrupted/uninterrupted equivalence comparison. The new ZIP includes Phase-2 state according to the export sequence; independent payload/hash inspection remains pending. Recent median complete-epoch duration is 1203.3 seconds (20.055 minutes), leaving 41 epochs / approximately 13.70 hours of training+validation. One additional 12-hour single-T4 session cannot finish the schedule even with zero setup overhead. Keep 30-epoch chunks: next checkpoint endpoints 89 and 100; final evaluation follows completion. Final multiscale/CRF runtime and scores remain unmeasured.
 
 2026-11-14 session-cap adjustment: the user requested better use of the 12-hour session. The upload notebook now defaults to 30 additional Phase-2 epochs, approximately 10.3 hours at the logged 1237 seconds/epoch. Observed setup was 2246 seconds (37.4 minutes), leaving approximately 64 minutes for export/variation. Forty epochs would take 13.7 hours before setup and cannot fit. From 29 completed epochs, planned chunk endpoints are 59, 89 and 100. This still requires three more sessions, as with the earlier 24-epoch cap; it does not reduce total epoch compute. The cap is not a wall-clock guarantee.
 

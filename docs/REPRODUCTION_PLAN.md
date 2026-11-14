@@ -1,6 +1,6 @@
 # WeakTr VOC Reproduction: Implementation Plan
 
-Status updated 2026-11-14 (Asia/Saigon): Phase 1 completed all 60 epochs; multiscale CAM/pseudo-label generation completed sufficiently to train Phase 2. The latest supplied log confirms 29/100 Phase-2 epochs and validation mIoU 69.53%, then a 12-hour timeout interrupted epoch 30. Active checkpoint files are user-reported accessible; binary epoch/hash and remote resume still need confirmation. Final 100-epoch segmentation evaluation remains pending.
+Status updated 2026-11-15 (Asia/Saigon): Phase 1 completed all 60 epochs; multiscale CAMs/pseudo-labels are generated. The latest supplied log confirms successful Phase-2 continuation from 29 to 59 completed epochs, resume ZIP export and successful notebook output writing. Best epoch-validation mIoU is 70.97%, latest 70.39%. There are 41 epochs remaining; final 100-epoch segmentation evaluation remains pending.
 
 ## Summary
 
@@ -81,6 +81,8 @@ If the forecast exceeds available budget, report the shortfall and preserve prog
 The deliverable is a repeatable experiment with honest measured results. Matching the published score is the target, not an assumed outcome.
 
 ## Current checklist and results
+
+2026-11-15 run review: epochs 29-58 completed, latest checkpoint summary 59/100, new ZIP exported, notebook/HTML conversion succeeded. Best epoch-validation mIoU 70.97% at zero-based epoch 56; latest 70.39% at epoch 58. Last-ten median epoch duration 1203.3 seconds; 41 remaining epochs forecast 13.70 hours before setup/final evaluation. Keep the single-T4 30-epoch chunk: next session reaches 89 completed epochs (~10.03 training/validation hours plus setup/export), following session trains 11 epochs (~3.68 hours plus setup/final evaluation). Controlled GPU recovery equivalence and final metrics are still pending. This review changes only experiment status/forecast, so no new model tests were run.
 
 2026-11-14 capacity adjustment: changed the notebook default from 24 to 30 additional Phase-2 epochs per invocation. The measured 1237 seconds/epoch projects to 10.3 hours for 30 epochs, plus the observed 37.4-minute setup, leaving approximately 64 minutes under 12 hours. Forty epochs would exceed 13.7 hours before setup. From 29 completed epochs, endpoints become 59/89/100; still three additional sessions. Full 100-epoch scheduler/recovery settings remain unchanged. This is a count-based plan, not an elapsed-time guarantee across different GPUs.
 
