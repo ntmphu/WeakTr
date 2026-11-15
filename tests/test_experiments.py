@@ -16,6 +16,7 @@ import torch.nn.functional as F
 from reproduction.checkpoint import load_checkpoint
 from reproduction.experiments import core, finetune
 from reproduction.experiments.bootstrap import unpack_manifest_archive
+from reproduction.experiments import bootstrap
 from reproduction.experiments.methods import (ResidualClipping, gate_affinity, agreement_mask,
                                              cam_labels, normalize_cams)
 
@@ -199,6 +200,69 @@ def test_bootstrap_rejects_unsafe_and_corrupt_archives(tmp_path):
         with pytest.raises(ValueError):
             unpack_manifest_archive(path, tmp_path / 'destination', 'run-manifest.json')
     assert not (tmp_path / 'outside.txt').exists()
+
+
+@pytest.mark.parametrize('preexisting_payloads', [False, True])
+def test_bootstrap_restores_extracted_run_manifest_and_reuses_local_payloads(tmp_path, monkeypatch, preexisting_payloads):
+    """Regression for the real Kaggle failure before environment installation."""
+    import hashlib
+    from reproduction import kaggle
+    inputs, work, scratch = tmp_path / 'inputs', tmp_path / 'work', tmp_path / 'scratch'
+    data_source, saved = inputs / 'voc', inputs / 'saved-run'
+    for path in (data_source, saved / 'phase2'):
+        path.mkdir(parents=True)
+    (data_source / 'weaktr-inputs-manifest.json').write_text('{}')
+    (saved / 'phase2/checkpoint.pth').write_bytes(b'completed snapshot')
+    expected = hashlib.sha256(b'completed snapshot').hexdigest()
+    manifest = dict(schema=1, files={'phase2/checkpoint.pth': expected})
+    (saved / 'run-manifest.json').write_text(json.dumps(manifest))
+    baseline = work / 'weaktr-artifacts'
+    if preexisting_payloads:
+        (baseline / 'phase2').mkdir(parents=True)
+        (baseline / 'phase2/checkpoint.pth').write_bytes(b'completed snapshot')
+        actual_digest = kaggle.digest
+        def local_only_digest(path, *args, **kwargs):
+            assert Path(path) != saved / 'phase2/checkpoint.pth', 'Should not reread already verified source payload'
+            return actual_digest(path, *args, **kwargs)
+        monkeypatch.setattr(kaggle, 'digest', local_only_digest)
+    monkeypatch.setattr(bootstrap, 'restore_inputs', lambda *args: None)
+    installs = []
+    def install(directory, env):
+        assert env['CUDA_VISIBLE_DEVICES'] == ''
+        assert json.loads((baseline / 'run-manifest.json').read_text()) == manifest
+        assert not (baseline / '.restore-in-progress.json').exists()
+        installs.append(directory)
+        return scratch / 'weaktr-env/bin/python'
+    monkeypatch.setattr(bootstrap, 'install_environment', install)
+    commands = []
+    monkeypatch.setattr(bootstrap.subprocess, 'run', lambda argv, **kwargs: commands.append(argv))
+    bootstrap.prepare(inputs, work, scratch)
+    assert len(installs) == 1 and commands[-1][1:3] == ['-m', 'pytest']
+
+
+def test_experiment_model_reads_official_tuple_yaml_and_strict_weights(tmp_path, monkeypatch):
+    import yaml
+    baseline = tmp_path / 'baseline'
+    (baseline / 'phase2').mkdir(parents=True)
+    variant = dict(net_kwargs=dict(image_size=(480, 480), n_cls=21))
+    # Use the same writer as segm.train, including its !!python/tuple tag.
+    (baseline / 'phase2/variant.yml').write_text(yaml.dump(variant))
+    expected = torch.nn.Linear(3, 21)
+    torch.save(dict(model=expected.state_dict()), baseline / 'phase2/checkpoint.pth')
+    monkeypatch.setattr(torch.nn.Module, 'cuda', lambda self: self)
+    for name in ('segm', 'segm.model', 'segm.model.factory'):
+        module = types.ModuleType(name)
+        module.__path__ = []
+        monkeypatch.setitem(sys.modules, name, module)
+    def create(config):
+        assert config['image_size'] == (480, 480)
+        assert config['initialize'] is False
+        return torch.nn.Linear(3, 21)
+    sys.modules['segm.model.factory'].create_segmenter = create
+    actual, loaded_variant = finetune.model_and_variant(dict(baseline=str(baseline)))
+    assert loaded_variant == variant
+    for key, value in expected.state_dict().items():
+        torch.testing.assert_close(actual.state_dict()[key], value, rtol=0, atol=0)
 
 
 def test_actual_pilot_loop_resume_equals_uninterrupted_cpu(tmp_path, monkeypatch):

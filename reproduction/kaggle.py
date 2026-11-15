@@ -148,16 +148,23 @@ def restore_run(inputs, output, resume_from='auto'):
         target = output.joinpath(*relative.parts).resolve()
         if source_root not in source.parents or output not in target.parents:
             raise ValueError(f'Unsafe saved-run path: {name}')
-        if digest(source) != expected:
-            raise ValueError(f'Saved-run transfer checksum mismatch: {name}')
         if target.exists() and digest(target) == expected:
+            # A verified local payload is sufficient; avoid rereading slow input
+            # mounts when repairing or repeating an already completed transfer.
             continue
         if target.exists():
             raise ValueError(f'Refusing to overwrite a different working artifact: {target}')
+        if digest(source) != expected:
+            raise ValueError(f'Saved-run transfer checksum mismatch: {name}')
         with source.open('rb') as stream:
             copy_atomic(stream, target)
         if digest(target) != expected:
             raise ValueError(f'Restored checkpoint/artifact checksum mismatch: {target}')
+    # Consumers of a restored folder need the same verified manifest as ZIP
+    # consumers. Commit it before removing the incomplete-transfer marker.
+    import io
+    content = (json.dumps(manifest, indent=2) + '\n').encode('utf-8')
+    copy_atomic(io.BytesIO(content), output / 'run-manifest.json')
     pending.unlink()
     print(f'Restored and verified saved run: {source_root}', flush=True)
     return source_root
@@ -171,6 +178,10 @@ def run_files(output):
         if not source.is_file():
             continue
         relative = source.relative_to(output)
+        # Export creates a fresh manifest. Including a previous one would make
+        # the archive contain duplicate run-manifest.json entries/self hashes.
+        if relative.as_posix() in ('run-manifest.json', '.restore-in-progress.json'):
+            continue
         if source.suffix not in ('.pth', '.yml', '.yaml', '.json', '.txt', '.log') and not (
                 relative.parts[0] == 'pseudo' and source.suffix == '.png'):
             continue

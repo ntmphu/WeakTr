@@ -13,6 +13,10 @@ Import `WeakTr_Experiments_Kaggle.ipynb`, enable Internet and one T4, and attach
 
 One configuration cell controls paths, fixed settings, stage switches, and the number of additional pilot epochs per call. `RESUME_FROM` disambiguates original saved runs; `EXPERIMENT_RESUME` disambiguates pilot exports. Setup handles ZIPs and extracted inputs, verifies original transfer hashes, reuses or repairs the isolated Python 3.10 environment, runs CPU tests, and validates the actual snapshots/data. Baseline artifacts are inputs; installer records go to `experiment-setup`, not into the baseline.
 
+2026-11-16 bootstrap fix: extracted saved-run restoration now persists its verified `run-manifest.json` locally before setup checks it. If an older run stopped with `Completed saved run needs run-manifest.json`, rerun the code/environment cell to pull the fix and continue. Matching local payloads are reused and the manifest is repaired; accessible working/scratch files need not be deleted. A new saved-version session may need fresh transfers. If an optional source bundle is attached, replace it with the updated bundle because attached source takes precedence over Git.
+
+The experiment model loader uses the same FullLoader as the official model reader: original `variant.yml` files include `!!python/tuple` values written by the trainer. This avoids a later safe-loader failure after bootstrap succeeds.
+
 The user authorized the longer overnight run on 2026-11-16. The default Run All performs CAM pilots, frozen clipping diagnostics, three epochs each for hard/residual clipping, full uncertainty-label generation, and three epochs each for raw/filtered uncertainty labels: four training arms and twelve fine-tuning epochs total. The training component is estimated at approximately 4–5 hours based on the original late-epoch timing, plus full CAM generation, setup, evaluation overhead and exports. This is an estimate, not a measured pilot runtime or a guarantee of finishing within one Kaggle session. Every stage saves/exports; train recovery is at completed epochs and frozen CAM recovery is per image.
 
 `RUN_FULL_UNCERTAINTY=True` is now the overnight default. It generates all 10,582 raw labels and runs the two uncertainty training arms. Set it to False for only the initial diagnostics and clipping comparison. Full-generation throughput remains unmeasured. A hard runtime termination can leave the last ZIP older than active per-image outputs; preserve/download outputs and resume from the latest accessible files. No Colab compute is used.
@@ -75,7 +79,7 @@ python -m pytest tests/test_experiments.py -q
 python -m pytest tests -q
 ```
 
-This Windows workspace uses isolated pytest 7.4.4. The managed Windows sandbox denied pytest access to newly created temporary directories with both pytest versions; the verified 71-test run used normal filesystem permissions with the following environment:
+This Windows workspace uses isolated pytest 7.4.4. The managed Windows sandbox denied pytest access to newly created temporary directories with both pytest versions; the verified 74-test run used normal filesystem permissions with the following environment:
 
 ```powershell
 $env:PYTHONPATH='artifacts/pytest74'
@@ -106,6 +110,6 @@ python -m reproduction.experiments.run preserve --config /kaggle/working/weaktr-
 
 ## Acceptance state
 
-- Implementation/local verification: all 71 CPU tests pass; the 19-cell notebook schema/code compiles. Tests cover original-versus-experimental clipping gradients, actual short-trainer recovery with a tiny CPU model, CAM alignment/caching, GT-free full label generation, transfer hashes, and ZIP/extracted source routing. See the latest handoff entry in PROJECT_CONTEXT.md.
+- Implementation/local verification: all 74 CPU tests pass; the 19-cell notebook schema/code compiles. Tests cover original-versus-experimental clipping gradients, actual short-trainer recovery with a tiny CPU model, CAM alignment/caching, GT-free full label generation, transfer hashes, ZIP/extracted source routing, the extracted saved-run manifest handoff/repair, and official tuple-YAML loading. See the latest handoff entry in PROJECT_CONTEXT.md.
 - Kaggle experiment imports, operator/model compatibility, runtime, recovery equivalence, and improvement metrics: pending actual remote execution.
 - Positive results, negative results, and insufficient retained coverage must all be reported without changing the completed baseline claim.

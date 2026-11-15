@@ -26,7 +26,9 @@ ARMS = ('hard', 'soft', 'uncertainty-control', 'uncertainty')
 def model_and_variant(cfg):
     from segm.model.factory import create_segmenter
     baseline = Path(cfg['baseline'])
-    variant = yaml.safe_load((baseline / 'phase2/variant.yml').read_text())
+    # The official trainer uses yaml.dump and emits !!python/tuple for
+    # image_size. Match the official model loader's FullLoader reader.
+    variant = yaml.load((baseline / 'phase2/variant.yml').read_text(), Loader=yaml.FullLoader)
     net = copy.deepcopy(variant['net_kwargs'])
     net['initialize'] = False
     model = create_segmenter(net)

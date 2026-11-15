@@ -124,6 +124,13 @@ def test_saved_run_roundtrip_keeps_resume_artifacts_and_excludes_cams(tmp_path):
     assert (restored / 'phase1/checkpoint.pth').read_bytes() == b'full snapshot'
     assert (restored / 'phase1/variant.yml').read_bytes() == b'config'
     assert (restored / 'pseudo/a.png').read_bytes() == b'pseudo'
+    saved_manifest = json.loads((restored / 'run-manifest.json').read_text())
+    assert saved_manifest == json.loads((tmp_path / 'attached/run/run-manifest.json').read_text())
+    # Re-export a restored folder without duplicate or self-referential manifests.
+    second = export_run(restored, tmp_path / 'second-export')
+    with zipfile.ZipFile(second) as collection:
+        assert collection.namelist().count('run-manifest.json') == 1
+        assert 'run-manifest.json' not in json.loads(collection.read('run-manifest.json'))['files']
     # Local checkpoints win in automatic mode, avoiding rollback to an older attached run.
     (restored / 'phase1/checkpoint.pth').write_bytes(b'newer checkpoint')
     restore_run(tmp_path / 'attached', restored)
@@ -155,10 +162,12 @@ def test_interrupted_restore_finishes_instead_of_treating_partial_copy_as_curren
     with pytest.raises(OSError, match='interrupted'):
         restore_run(tmp_path / 'attached', work)
     assert (work / 'phase1/checkpoint.pth').exists()
+    assert not (work / 'run-manifest.json').exists()  # Receipt is committed only after all payloads verify.
     monkeypatch.setattr(kaggle, 'copy_atomic', original_copy)
     restore_run(tmp_path / 'attached', work)
     assert (work / 'phase1/variant.yml').read_bytes() == b'variant'
     assert not (work / '.restore-in-progress.json').exists()
+    assert (work / 'run-manifest.json').exists()
 
 
 def test_restore_active_phase2_folder_when_timeout_prevented_manifest_export(tmp_path):
