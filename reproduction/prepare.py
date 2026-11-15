@@ -106,13 +106,26 @@ def safe_name(name):
     return path
 
 
-def copy_atomic(source, target):
+def copy_atomic(source, target, expected_sha256=None):
+    """Copy once, optionally hashing the stream before committing the target."""
     target = Path(target)
     target.parent.mkdir(parents=True, exist_ok=True)
     partial = target.with_name(target.name + '.extracting')
-    with partial.open('wb') as stream:
-        shutil.copyfileobj(source, stream)
-    os.replace(partial, target)
+    try:
+        with partial.open('wb') as stream:
+            if expected_sha256 is None:
+                shutil.copyfileobj(source, stream)
+            else:
+                checksum = hashlib.sha256()
+                for chunk in iter(lambda: source.read(1024 * 1024), b''):
+                    checksum.update(chunk)
+                    stream.write(chunk)
+                if checksum.hexdigest() != expected_sha256:
+                    raise ValueError(f'Copy checksum mismatch: {target}')
+        os.replace(partial, target)
+    finally:
+        if partial.exists():
+            partial.unlink()
 
 
 def extract_voc(archive, destination):

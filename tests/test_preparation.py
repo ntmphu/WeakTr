@@ -3,6 +3,7 @@ import io
 import json
 from pathlib import Path
 import tarfile
+import threading
 import zipfile
 
 import pytest
@@ -95,6 +96,66 @@ def test_restore_uploaded_inputs_verifies_hashes_and_reuses_valid_local_copy(tmp
         restore_inputs(tmp_path / 'inputs', work)
 
 
+def test_verified_copy_preserves_old_target_on_bad_source_and_cleans_partial(tmp_path):
+    target = tmp_path / 'checkpoint.pth'
+    target.write_bytes(b'previous valid checkpoint')
+    expected = hashlib.sha256(b'new expected checkpoint').hexdigest()
+    with pytest.raises(ValueError, match='Copy checksum mismatch'):
+        prepare.copy_atomic(io.BytesIO(b'bad source'), target, expected_sha256=expected)
+    assert target.read_bytes() == b'previous valid checkpoint'
+    assert not target.with_name('checkpoint.pth.extracting').exists()
+    class Interrupted(io.BytesIO):
+        def read(self, *args):
+            raise OSError('interrupted read')
+    with pytest.raises(OSError, match='interrupted read'):
+        prepare.copy_atomic(Interrupted(), target, expected_sha256=expected)
+    assert target.read_bytes() == b'previous valid checkpoint'
+    assert not target.with_name('checkpoint.pth.extracting').exists()
+
+
+def test_parallel_input_restore_reads_sources_once_and_reuses_local_files(tmp_path, monkeypatch):
+    source, target = tmp_path / 'input', tmp_path / 'runtime'
+    source.mkdir()
+    files = {f'{i}.bin': f'payload-{i}'.encode() for i in range(8)}
+    for name, content in files.items():
+        (source / name).write_bytes(content)
+    manifest = dict(schema=1, files={name: hashlib.sha256(content).hexdigest()
+                                   for name, content in files.items()})
+    (source / 'weaktr-inputs-manifest.json').write_text(json.dumps(manifest))
+    opened, thread_ids = {}, set()
+    lock, barrier = threading.Lock(), threading.Barrier(4, timeout=10)
+    actual_open, actual_copy = Path.open, kaggle.copy_atomic
+    def counted_open(path, *args, **kwargs):
+        if path.parent == source and path.name in files:
+            with lock:
+                opened[path.name] = opened.get(path.name, 0) + 1
+        return actual_open(path, *args, **kwargs)
+    def concurrent_copy(stream, path, **kwargs):
+        with lock:
+            thread_ids.add(threading.get_ident())
+        barrier.wait()  # A sequential implementation cannot satisfy this barrier.
+        return actual_copy(stream, path, **kwargs)
+    monkeypatch.setattr(Path, 'open', counted_open)
+    monkeypatch.setattr(kaggle, 'copy_atomic', concurrent_copy)
+    restore_inputs(source, target, workers=4)
+    assert len(thread_ids) == 4
+    assert opened == {name: 1 for name in files}
+    for name, content in files.items():
+        assert (target / name).read_bytes() == content
+    restore_inputs(source, target, workers=4)
+    assert opened == {name: 1 for name in files}  # Rerun does not reopen source payloads.
+
+
+def test_parallel_input_restore_rejects_colliding_normalized_paths(tmp_path):
+    source = tmp_path / 'input'
+    source.mkdir()
+    manifest = dict(schema=1, files={'folder/item': '0'*64, 'folder/./item': '0'*64})
+    (source / 'weaktr-inputs-manifest.json').write_text(json.dumps(manifest))
+    with pytest.raises(ValueError, match='Duplicate normalized'):
+        restore_inputs(source, tmp_path / 'runtime')
+    assert not (tmp_path / 'runtime').exists()
+
+
 def test_split_files_are_generated_from_repository_lists(tmp_path):
     repo = tmp_path / 'repo'
     (repo / 'voc12').mkdir(parents=True)
@@ -153,10 +214,10 @@ def test_interrupted_restore_finishes_instead_of_treating_partial_copy_as_curren
     (source / 'run-manifest.json').write_text(json.dumps(dict(schema=1, files={
         name: hashlib.sha256(content).hexdigest() for name, content in files.items()})))
     original_copy = kaggle.copy_atomic
-    def interrupt(stream, target):
+    def interrupt(stream, target, **kwargs):
         if target.name == 'variant.yml':
             raise OSError('interrupted transfer')
-        original_copy(stream, target)
+        original_copy(stream, target, **kwargs)
     monkeypatch.setattr(kaggle, 'copy_atomic', interrupt)
     work = tmp_path / 'restored'
     with pytest.raises(OSError, match='interrupted'):

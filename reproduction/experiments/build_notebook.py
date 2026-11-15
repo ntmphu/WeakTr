@@ -18,7 +18,9 @@ def build():
 
 Attach your **original private VOC/ImageNet input bundle** and the **completed 100-epoch saved run** (ZIP or extracted folder). Internet on; one T4. Optional: attach `weaktr-experiments-source.zip` to run the exact delivered source without Git access. To resume pilots, attach the prior `weaktr-experiments.zip` too.
 
-Run cells interactively to check setup, imports, and the small GPU checks before Save Version. The overnight default runs frozen diagnostics, two matched three-epoch clipping arms, full uncertainty-label generation, and two matched three-epoch uncertainty arms. Set RUN_FULL_UNCERTAINTY=False for the shorter diagnostic/clipping run. No original Phase-1/Phase-2 retraining is launched.
+For an unattended run, attach inputs, configure this notebook, and choose Save Version / Save & Run All directly; CPU preparation/tests run automatically inside that job. Save & Run All creates a fresh runtime and repeats transfers even if interactive preparation already passed. Alternatively, run all cells in the same interactive session and download the exported ZIP before ending it.
+
+The overnight default runs frozen diagnostics, two matched three-epoch clipping arms, full uncertainty-label generation, and two matched three-epoch uncertainty arms. Set RUN_FULL_UNCERTAINTY=False for the shorter diagnostic/clipping run. No original Phase-1/Phase-2 retraining is launched.
 
 Original result: 72.865% CRF VOC val. Pilot validation uses a separate, single-scale/no-CRF protocol; compare its matched arms. Runtime/improvement of the new experiments is not yet measured. Read `docs/EXPERIMENTS.md`.''')
     code('''# Single configuration cell

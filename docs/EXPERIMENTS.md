@@ -13,6 +13,10 @@ Import `WeakTr_Experiments_Kaggle.ipynb`, enable Internet and one T4, and attach
 
 One configuration cell controls paths, fixed settings, stage switches, and the number of additional pilot epochs per call. `RESUME_FROM` disambiguates original saved runs; `EXPERIMENT_RESUME` disambiguates pilot exports. Setup handles ZIPs and extracted inputs, verifies original transfer hashes, reuses or repairs the isolated Python 3.10 environment, runs CPU tests, and validates the actual snapshots/data. Baseline artifacts are inputs; installer records go to `experiment-setup`, not into the baseline.
 
+Choose one execution route: for an unattended run, attach inputs/configure and launch Save Version / Save & Run All directly; the job performs preparation/tests automatically. For interactive execution, run cells top to bottom in the same session and download the export before ending it. Save & Run All starts a fresh runtime and cannot use an interactive session's scratch cache. Running interactive preparation and then launching a saved run duplicates that preparation.
+
+Fresh-session transfer optimization: extracted inputs use eight bounded copy workers by default. Each new source file is read once while computing its SHA256, then the completed local copy is independently hashed. Saved-run payloads also hash during the copy. Corrupt streams never replace an existing target and partial files are cleaned up. Transfers still run in every fresh runtime; Kaggle speedup remains unmeasured. Progress reports elapsed time and copied/reused counts.
+
 2026-11-16 bootstrap fix: extracted saved-run restoration now persists its verified `run-manifest.json` locally before setup checks it. If an older run stopped with `Completed saved run needs run-manifest.json`, rerun the code/environment cell to pull the fix and continue. Matching local payloads are reused and the manifest is repaired; accessible working/scratch files need not be deleted. A new saved-version session may need fresh transfers. If an optional source bundle is attached, replace it with the updated bundle because attached source takes precedence over Git.
 
 The experiment model loader uses the same FullLoader as the official model reader: original `variant.yml` files include `!!python/tuple` values written by the trainer. This avoids a later safe-loader failure after bootstrap succeeds.
@@ -79,7 +83,7 @@ python -m pytest tests/test_experiments.py -q
 python -m pytest tests -q
 ```
 
-This Windows workspace uses isolated pytest 7.4.4. The managed Windows sandbox denied pytest access to newly created temporary directories with both pytest versions; the verified 74-test run used normal filesystem permissions with the following environment:
+This Windows workspace uses isolated pytest 7.4.4. The managed Windows sandbox denied pytest access to newly created temporary directories with both pytest versions; the verified 77-test run used normal filesystem permissions with the following environment:
 
 ```powershell
 $env:PYTHONPATH='artifacts/pytest74'
@@ -110,6 +114,6 @@ python -m reproduction.experiments.run preserve --config /kaggle/working/weaktr-
 
 ## Acceptance state
 
-- Implementation/local verification: all 74 CPU tests pass; the 19-cell notebook schema/code compiles. Tests cover original-versus-experimental clipping gradients, actual short-trainer recovery with a tiny CPU model, CAM alignment/caching, GT-free full label generation, transfer hashes, ZIP/extracted source routing, the extracted saved-run manifest handoff/repair, and official tuple-YAML loading. See the latest handoff entry in PROJECT_CONTEXT.md.
+- Implementation/local verification: all 77 CPU tests pass; the 19-cell notebook schema/code compiles. Tests cover original-versus-experimental clipping gradients, actual short-trainer recovery with a tiny CPU model, CAM alignment/caching, GT-free full label generation, transfer hashes, ZIP/extracted source routing, the extracted saved-run manifest handoff/repair, official tuple-YAML loading, and concurrent single-source-read transfers/corruption recovery. See the latest handoff entry in PROJECT_CONTEXT.md.
 - Kaggle experiment imports, operator/model compatibility, runtime, recovery equivalence, and improvement metrics: pending actual remote execution.
 - Positive results, negative results, and insufficient retained coverage must all be reported without changing the completed baseline claim.

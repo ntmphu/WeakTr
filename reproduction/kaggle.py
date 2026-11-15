@@ -6,7 +6,9 @@ from pathlib import Path
 import platform
 import subprocess
 import sys
+import time
 import zipfile
+from concurrent.futures import ThreadPoolExecutor
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -44,8 +46,8 @@ def python_version(python, env):
     return result.stdout.strip()
 
 
-def restore_inputs(inputs, work):
-    """Copy the uploaded bundle's contents to local disk, checking every payload hash."""
+def restore_inputs(inputs, work, workers=8):
+    """Restore inputs concurrently, reading each new source payload only once."""
     inputs, work = Path(inputs).resolve(), Path(work).resolve()
     manifests = sorted(inputs.rglob('weaktr-inputs-manifest.json'))
     if len(manifests) != 1:
@@ -55,22 +57,46 @@ def restore_inputs(inputs, work):
     manifest = json.loads(manifest_path.read_text())
     if manifest.get('schema') != 1 or not manifest.get('files'):
         raise ValueError('Invalid input manifest.')
-    for index, (name, expected) in enumerate(manifest['files'].items(), 1):
+    if not isinstance(workers, int) or workers < 1:
+        raise ValueError('Input transfer workers must be a positive integer.')
+    # Validate lexical names before threads start; duplicate normalized targets
+    # would otherwise race on the same atomic temporary filename.
+    jobs, normalized = [], set()
+    for name, expected in manifest['files'].items():
         relative = safe_name(name)
+        if relative.as_posix() in normalized:
+            raise ValueError(f'Duplicate normalized input path: {name}')
+        normalized.add(relative.as_posix())
+        jobs.append((name, relative, expected))
+
+    def restore_one(job):
+        name, relative, expected = job
         source = source_root.joinpath(*relative.parts).resolve()
         target = work.joinpath(*relative.parts).resolve()
         if source_root not in source.parents or work not in target.parents:
             raise ValueError(f'Input path escapes its directory: {name}')
         if target.is_file() and digest(target) == expected:
-            continue
-        if digest(source) != expected:
-            raise ValueError(f'Uploaded input checksum mismatch: {name}')
-        with source.open('rb') as stream:
-            copy_atomic(stream, target)
+            return False
+        try:
+            with source.open('rb') as stream:
+                copy_atomic(stream, target, expected_sha256=expected)
+        except ValueError as error:
+            raise ValueError(f'Uploaded input checksum mismatch: {name}') from error
         if digest(target) != expected:
             raise ValueError(f'Local copy checksum mismatch: {name}')
-        if index % 2000 == 0:
-            print(f'Copied and verified {index}/{len(manifest["files"])} files', flush=True)
+        return True
+
+    started, copied = time.monotonic(), 0
+    count = min(workers, len(jobs))
+    print(f'Restoring {len(jobs)} input files with {count} workers; '
+          'one input read per new file plus local SHA256 verification.', flush=True)
+    with ThreadPoolExecutor(max_workers=count) as executor:
+        for index, was_copied in enumerate(executor.map(restore_one, jobs), 1):
+            copied += was_copied
+            if index % 2000 == 0 or index == len(jobs):
+                elapsed = time.monotonic() - started
+                print(f'Verified {index}/{len(jobs)} input files '
+                      f'({copied} copied, {index-copied} reused), {elapsed:.1f}s elapsed', flush=True)
     (work / 'weaktr-inputs-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
     return manifest
 
@@ -154,10 +180,11 @@ def restore_run(inputs, output, resume_from='auto'):
             continue
         if target.exists():
             raise ValueError(f'Refusing to overwrite a different working artifact: {target}')
-        if digest(source) != expected:
-            raise ValueError(f'Saved-run transfer checksum mismatch: {name}')
-        with source.open('rb') as stream:
-            copy_atomic(stream, target)
+        try:
+            with source.open('rb') as stream:
+                copy_atomic(stream, target, expected_sha256=expected)
+        except ValueError as error:
+            raise ValueError(f'Saved-run transfer checksum mismatch: {name}') from error
         if digest(target) != expected:
             raise ValueError(f'Restored checkpoint/artifact checksum mismatch: {target}')
     # Consumers of a restored folder need the same verified manifest as ZIP
