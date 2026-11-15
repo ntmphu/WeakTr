@@ -1,0 +1,64 @@
+{
+  "archive": "weaktr-resume (1).zip",
+  "archive_bytes": 1702064091,
+  "manifest_verified_files": 10646,
+  "manifest_failures": [],
+  "pseudo_masks": 10582,
+  "logged_epochs": {
+    "phase1": 60,
+    "phase2": 100
+  },
+  "checkpoint_epochs": {
+    "phase1": 59,
+    "phase2": 99
+  },
+  "reports_match_archive": true,
+  "evaluation_records_match_final_checkpoint": true,
+  "prediction_masks_in_archive": 0,
+  "final_checkpoint_sha256": "891e0cbcbcabdd695d9a56ef7bce9830a8d1b3e3a77752795cfff4ed0a4b67ba",
+  "training_commit": "0b7f75f11d15b0886532efaa36e70dfdd538d741",
+  "completed_stages": {
+    "phase1": {
+      "status": "command_completed",
+      "elapsed_seconds": 13560.707144873,
+      "git_commit": "d2f0c40d6a29311adb546e3f7819a5109ec79100"
+    },
+    "cams": {
+      "status": "command_completed",
+      "elapsed_seconds": 1369.992981466,
+      "git_commit": "6bdad56a4c8072765a0e0ae17cc2b6be74e26381"
+    },
+    "cam-eval": {
+      "status": "command_completed",
+      "elapsed_seconds": 84.28984221899964,
+      "git_commit": "6bdad56a4c8072765a0e0ae17cc2b6be74e26381"
+    },
+    "pseudo": {
+      "status": "command_completed",
+      "elapsed_seconds": 2678.118973093,
+      "git_commit": "6bdad56a4c8072765a0e0ae17cc2b6be74e26381"
+    },
+    "phase2": {
+      "status": "command_completed",
+      "elapsed_seconds": 14348.129645014998,
+      "git_commit": "0b7f75f11d15b0886532efaa36e70dfdd538d741"
+    },
+    "evaluate": {
+      "status": "command_completed",
+      "elapsed_seconds": 3365.0337155089983,
+      "git_commit": "0b7f75f11d15b0886532efaa36e70dfdd538d741"
+    },
+    "crf": {
+      "status": "command_completed",
+      "elapsed_seconds": 364.00048824999976,
+      "git_commit": "0b7f75f11d15b0886532efaa36e70dfdd538d741"
+    }
+  },
+  "phase2_resume_start_epochs": [
+    0,
+    29,
+    59,
+    89
+  ],
+  "pseudo_annotation_sha256": "f0ba69493d0734f1f7b0a69516a751d27382c6250330d5e9891bf094bcec0876"
+}

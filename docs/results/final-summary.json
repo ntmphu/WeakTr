@@ -1,0 +1,70 @@
+{
+  "status": "training_and_final_evaluation_completed",
+  "phase2_completed_epochs": 100,
+  "validation_images": 1449,
+  "raw_multiscale_miou": 71.45,
+  "post_crf_miou": 72.86542783059257,
+  "paper_target_miou": 74.0,
+  "paper_target_shortfall_pp": 1.1345721694074342,
+  "raw_per_class_iou": {
+    "background": 91.67,
+    "aeroplane": 85.44,
+    "bicycle": 45.0,
+    "bird": 88.78,
+    "boat": 68.49,
+    "bottle": 76.72,
+    "bus": 88.08,
+    "car": 80.72,
+    "cat": 89.35,
+    "chair": 30.86,
+    "cow": 81.75,
+    "diningtable": 46.22,
+    "dog": 83.33,
+    "horse": 79.22,
+    "motorbike": 78.39,
+    "person": 78.04,
+    "pottedplant": 54.69,
+    "sheep": 86.17,
+    "sofa": 38.8,
+    "train": 80.73,
+    "tvmonitor": 47.93
+  },
+  "crf_per_class_iou": {
+    "background": 92.25751936732198,
+    "aeroplane": 86.78973900457201,
+    "bicycle": 46.165028582735346,
+    "bird": 88.87602035551548,
+    "boat": 71.1982054248115,
+    "bottle": 79.57725132403138,
+    "bus": 89.0207581580657,
+    "car": 82.03761482064803,
+    "cat": 91.00593803421847,
+    "chair": 34.11162562082999,
+    "cow": 83.74965616916,
+    "diningtable": 47.9933477950126,
+    "dog": 84.42573139063573,
+    "horse": 80.31351094579627,
+    "motorbike": 79.33136200137217,
+    "person": 79.260878070713,
+    "pottedplant": 56.891472355300735,
+    "sheep": 86.76926243799628,
+    "sofa": 39.486002877660276,
+    "train": 81.4900663596659,
+    "tvmonitor": 49.4229933463812
+  },
+  "checkpoint_sha256": "891e0cbcbcabdd695d9a56ef7bce9830a8d1b3e3a77752795cfff4ed0a4b67ba",
+  "score_file_sha256": {
+    "phase2/scores_ms.yml": "88b6ac5bfdd601370d8f03cfbf788d5d4b66425afeee3134992f3fd4ff8d85bc",
+    "phase2/scores_ms_crf.json": "b4d2029be2e593b80ac2b1385b41f3bdff097225e4d16e93256710e1a4dcf573"
+  },
+  "stage_seconds": {
+    "evaluate": 3365.0337155089983,
+    "crf": 364.00048824999976
+  },
+  "inference": {
+    "backbone": "multi",
+    "decoder_weight": 0.8,
+    "postprocessing": "CRF"
+  },
+  "note": "Scores are measured outputs; completion does not imply the paper target is matched."
+}

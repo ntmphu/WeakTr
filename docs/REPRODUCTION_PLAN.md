@@ -1,6 +1,6 @@
 # WeakTr VOC Reproduction: Implementation Plan
 
-Status updated 2026-11-15 (Asia/Saigon): Phase 1 completed all 60 epochs; multiscale CAMs/pseudo-labels are generated. The latest supplied log confirms successful Phase-2 continuation from 29 to 59 completed epochs, resume ZIP export and successful notebook output writing. Best epoch-validation mIoU is 70.97%, latest 70.39%. There are 41 epochs remaining; final 100-epoch segmentation evaluation remains pending.
+2026-11-15 final artifact review: both full snapshots and complete logs now confirm Phase 1 60/60 and Phase 2 100/100 epochs. All 10,646 ZIP payload hashes pass; 10,582 pseudo masks match the training split. Completed raw multiscale/CRF evaluations identify the same final checkpoint. Final VOC val mIoU: raw 71.450%, post-CRF 72.8654278306%, a 1.1345721694 pp shortfall from 74.0%. Local CPU evaluation of saved CRF masks on the matching 1,464-image train subset gives 68.1890587138% (paper 69.4%); the earlier 62.780% was trainaug-wide. Final stages took 3h59m training plus 62m evaluation/CRF. See [final review](results/FINAL_REVIEW.md) for verification, per-class comparisons and the required configuration audit. The experiment is complete; numerical paper matching, author-checkpoint evaluation and controlled GPU resume equivalence are not established. Download final validation PNGs separately from Kaggle; the ZIP excludes them.
 
 ## Summary
 
@@ -111,12 +111,12 @@ Workflow clarification (2026-11-09): the user expects notebook import or Git clo
 - [x] Candidate isolated environment and Kaggle notebook implemented (GPU compatibility pending).
 - [x] Resume fixes and verification tools implemented/CPU-tested (GPU integration acceptance pending).
 - [x] Walkthrough imported, paths verified, external copy preserved, and Git exclusions extended.
-- [ ] Dataset preflight and GPU compatibility checks passed.
+- [x] Dataset preflight completed in archived records; both stages completed actual GPU training (controlled recovery/reference checks remain separate).
 - [ ] Runtime forecast and restart test completed.
 - [x] Phase-1 60-epoch training completed according to the supplied log (saved checkpoint bytes still need verification).
 - [x] Multiscale CAMs and CRF pseudo-labels generated; subsequent Phase-2 training is logged.
-- [ ] Phase 2 completed.
-- [ ] Final evaluation and report completed.
+- [x] Phase 2 completed: snapshot epoch 99 and 100 continuous log rows verified.
+- [x] Final evaluation and report completed: 71.450% raw / 72.865% post-CRF VOC val; see results/FINAL_REVIEW.md.
 
 | Measurement | Value |
 | --- | --- |
@@ -125,7 +125,7 @@ Workflow clarification (2026-11-09): the user expects notebook import or Git clo
 | Local VOC data validation | All 10,582 train and 1,449 val pairs pass decoding, dimensions, class IDs, split counts and disjointness; Kaggle transfer/preflight pending |
 | Measured GPU hours | Not measured |
 | Phase-1 CAM mIoU | User log: best selection 65.8367% at epoch 33; final epoch 64.3933%. README reference 69.4% requires matching CAM evaluation/postprocessing |
-| Raw validation mIoU | Not measured |
-| Final post-CRF validation mIoU | Not measured; target 74.0% |
+| Raw validation mIoU | 71.450%; final multiscale evaluation, 1,449 VOC val images |
+| Final post-CRF validation mIoU | 72.8654278306%; target 74.0%, shortfall 1.1345721694 pp |
 
 Runnable preparation/pilot/full-stage commands are in [KAGGLE.md](KAGGLE.md) and `WeakTr_Kaggle.ipynb`. Local focused verification: `python -m pytest tests/test_reproduction.py -q`. Static checks validate both notebooks and compile their code cells. The upstream `docs/Training.md` and `docs/Evaluate.md` remain the protocol references. The Kaggle environment and complete training/evaluation workflow still require measured GPU acceptance; candidate dependency versions must not be described as validated pins.
