@@ -268,6 +268,10 @@ def test_experiment_notebook_is_clean_and_routes_stages():
     import nbformat
     notebook = nbformat.read(core.ROOT / 'WeakTr_Experiments_Kaggle.ipynb', as_version=4)
     nbformat.validate(notebook)
+    config = ast.parse(notebook.cells[1].source)
+    switch = next(n.value for n in config.body if isinstance(n, ast.Assign)
+                  and isinstance(n.targets[0], ast.Name) and n.targets[0].id == 'RUN_FULL_UNCERTAINTY')
+    assert ast.literal_eval(switch) is True
     commands = []
     namespace = dict(run=lambda stage, arm=None: commands.append((stage, arm)),
                      RUN_CLIPPING_TRAINING=True, RUN_FULL_UNCERTAINTY=False)

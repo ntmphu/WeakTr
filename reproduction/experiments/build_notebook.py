@@ -18,7 +18,7 @@ def build():
 
 Attach your **original private VOC/ImageNet input bundle** and the **completed 100-epoch saved run** (ZIP or extracted folder). Internet on; one T4. Optional: attach `weaktr-experiments-source.zip` to run the exact delivered source without Git access. To resume pilots, attach the prior `weaktr-experiments.zip` too.
 
-Run cells interactively to check setup, imports, and the small GPU checks before Save Version. Run All covers frozen propagation/agreement diagnostics and two matched three-epoch clipping arms. The longer full uncertainty-label experiment is optional in the single configuration cell below. No original Phase-1/Phase-2 retraining is launched.
+Run cells interactively to check setup, imports, and the small GPU checks before Save Version. The overnight default runs frozen diagnostics, two matched three-epoch clipping arms, full uncertainty-label generation, and two matched three-epoch uncertainty arms. Set RUN_FULL_UNCERTAINTY=False for the shorter diagnostic/clipping run. No original Phase-1/Phase-2 retraining is launched.
 
 Original result: 72.865% CRF VOC val. Pilot validation uses a separate, single-scale/no-CRF protocol; compare its matched arms. Runtime/improvement of the new experiments is not yet measured. Read `docs/EXPERIMENTS.md`.''')
     code('''# Single configuration cell
@@ -34,7 +34,7 @@ REPO = WORK / 'WeakTr-experiments-code'
 RESUME_FROM = 'auto'  # Or the exact completed original saved-run ZIP/folder.
 EXPERIMENT_RESUME = 'auto'  # auto | none | exact experiment ZIP/folder
 RUN_CLIPPING_TRAINING = True
-RUN_FULL_UNCERTAINTY = False  # Longer: generate all trainaug labels + two matched 3-epoch arms.
+RUN_FULL_UNCERTAINTY = True  # Overnight: generate all trainaug labels + two matched 3-epoch arms.
 
 SETTINGS = dict(
     schema=1, seed=504, data=str(SCRATCH / 'data'),
@@ -145,7 +145,7 @@ print('Experiment operators passed CPU tests during setup; new GPU pilot evidenc
     run('train', 'soft')
 else:
     print('Clipping training disabled; diagnostics still run.')""", True)
-    markdown('## Optional full uncertainty-label training\nEnable RUN_FULL_UNCERTAINTY in the configuration cell to regenerate all 10,582 raw pseudo-labels and run two matched training arms. The control uses regenerated raw labels; the treatment ignores view disagreement. Both normalize by valid pixels. This costs an additional full CAM pass and six training epochs; measure throughput before enabling.')
+    markdown('## Full uncertainty-label training (enabled for overnight run)\nRUN_FULL_UNCERTAINTY=True regenerates all 10,582 raw pseudo-labels and runs two matched training arms. The control uses regenerated raw labels; the treatment ignores view disagreement. Both normalize by valid pixels. This adds a full CAM pass and six training epochs. Total overnight runtime is unmeasured and may exceed the session limit; save/export outputs and resume if needed.')
     code("""if RUN_FULL_UNCERTAINTY:
     run('uncertainty-labels')
     run('train', 'uncertainty-control')
