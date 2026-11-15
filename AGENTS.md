@@ -22,6 +22,7 @@ Read `docs/PROJECT_CONTEXT.md` and `docs/REPRODUCTION_PLAN.md` before work.
 - Before changes: `git status --short --branch` and `git remote -v`.
 - Before committing: `git diff --check`; run focused tests for checkpoint recovery, data validation, and IoU once implemented. Document exact runnable test commands here as tools are added.
 - CPU checks: `python -m pytest tests -q`. GPU acceptance: `python -m reproduction.smoke --pretrained /absolute/path/deit_small_patch16_224.pth`; then both stages' full-size pilots and interrupted recovery comparisons with `python -m reproduction.compare BASELINE/checkpoint.pth RESUMED/checkpoint.pth`. See `docs/KAGGLE.md`.
+- Exploratory weakness pilots: `python -m pytest tests/test_experiments.py -q`; full CPU suite remains required. Use `WeakTr_Experiments_Kaggle.ipynb` / `docs/EXPERIMENTS.md`. Keep experiments separate from the completed reproduction, compare matched evaluation protocols, and label short fine-tuning/conditional pseudo-label metrics accurately. All new GPU evidence remains pending until measured.
 - GPU acceptance requires both stages' forward/backward checks and an interrupted-versus-uninterrupted recovery check, followed by author-checkpoint evaluation.
 - Record Git commit, complete resolved config, seed, dataset-list hashes, environment/GPU, elapsed time, and checkpoint provenance per run.
 - Update the plan's checklist/results after verified milestones. Preserve official ground-truth usage for CAM evaluation/checkpoint selection in descriptions.
