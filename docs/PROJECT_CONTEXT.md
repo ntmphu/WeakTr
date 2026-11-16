@@ -1,6 +1,6 @@
 # Project context and handoff
 
-Updated: 2026-11-15, Asia/Saigon.
+Updated: 2026-11-16, Asia/Saigon.
 
 ## Goal and decisions
 
@@ -17,6 +17,8 @@ Reproduce **WeakTr: Exploring Plain Vision Transformer for Weakly-supervised Sem
 - Storage: local runtime disk while training, saved Kaggle outputs and local backups between sessions; optional archive on the user's 400 GB Drive.
 
 ## Current state
+
+2026-11-16 Phase-2 input recovery: the new supplied Kaggle log verifies input transfer in 104.5 seconds, saved-run restoration, successful installation, and 77 passing CPU tests. It then fails preflight because the local baseline lacks `phase2/checkpoint.pth`; no experimental GPU stage was reached. The user confirms that checkpoint and `variant.yml` are present in the attached folder, consistent with an older export manifest omitting later Phase-2 files. Experiment bootstrap now checks required artifacts before copying inputs/installing, selects a complete final ZIP rather than an incomplete extracted export, and supplements omitted required files in an extracted folder with freshly computed transfer hashes. The source manifest and its existing expected hashes remain unchanged; the local receipt records the original manifest hash and added entries. Preflight validates checkpoint stage/epoch and pseudo-label fingerprint before scanning all images. All 89 CPU tests pass, including fresh and partially restored stale-manifest paths, source preservation, corruption rejection and complete-run selection. Exact command: isolated pytest 7.4.4 on PYTHONPATH, plugin autoload disabled, `python -m pytest tests -q --tb=short -p no:cacheprovider --basetemp artifacts/pytest-stale-manifest-full-verified`, using normal filesystem permissions. The Git-backed existing notebook pulls the fix; an optional attached source bundle needs replacement. Remote execution of this latest repair remains pending.
 
 2026-11-16 fresh-session transfer optimization: user clarified that each Save & Run All repeats setup, so same-session cache reuse does not address their delay. Extracted input transfer now uses eight workers, hashes each source during its single copy read, and separately verifies local copies. Saved-run copies also avoid separate source prehashing. Atomic checksum failure preserves existing targets and cleans temporary files; duplicate normalized input paths are rejected before parallel work starts. Notebook guidance now distinguishes direct background launch from a full interactive run to avoid doing interactive preparation immediately before repeating it in a fresh saved run. All 77 CPU tests pass, including a synchronized concurrency/single-source-open regression, checksum/IO failure preservation, recovery, and notebook validation. Actual Kaggle transfer speed remains unmeasured.
 

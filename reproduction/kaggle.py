@@ -132,7 +132,7 @@ def install_environment(work, env):
     return python
 
 
-def restore_run(inputs, output, resume_from='auto'):
+def restore_run(inputs, output, resume_from='auto', required_files=()):
     """Prefer this session's checkpoints, otherwise restore a verified saved run."""
     inputs, output = Path(inputs).resolve(), Path(output).resolve()
     pending = output / '.restore-in-progress.json'
@@ -166,6 +166,23 @@ def restore_run(inputs, output, resume_from='auto'):
         raise ValueError(f'No saved-run manifest or active Phase-2 checkpoint found in {source_root}.')
     if manifest.get('schema') != 1 or not manifest.get('files'):
         raise ValueError('Invalid saved-run manifest.')
+    supplemented = {}
+    # Active Kaggle folders can have newer Phase-2 files than their last export
+    # manifest. Preserve all original expected hashes; add only required files
+    # that exist in this explicitly selected, user-attached source folder.
+    for name in required_files:
+        relative = safe_name(name)
+        source = source_root.joinpath(*relative.parts).resolve()
+        if source_root not in source.parents or not source.is_file():
+            raise ValueError(f'Required saved-run artifact is absent: {source}')
+        if name not in manifest['files']:
+            supplemented[name] = digest(source)
+    if supplemented:
+        manifest['files'].update(supplemented)
+        manifest.setdefault('supplemented_required_files', {}).update(supplemented)
+        manifest['original_manifest_sha256'] = digest(manifest_path)
+        print(f'Supplementing stale saved-run manifest with verified required files: '
+              f'{list(supplemented)}', flush=True)
     output.mkdir(parents=True, exist_ok=True)
     pending.write_text(json.dumps(dict(source=str(source_root))) + '\n')
     for name, expected in manifest['files'].items():

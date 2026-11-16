@@ -203,33 +203,51 @@ def test_bootstrap_rejects_unsafe_and_corrupt_archives(tmp_path):
 
 
 @pytest.mark.parametrize('preexisting_payloads', [False, True])
-def test_bootstrap_restores_extracted_run_manifest_and_reuses_local_payloads(tmp_path, monkeypatch, preexisting_payloads):
+@pytest.mark.parametrize('stale_manifest', [False, True])
+def test_bootstrap_restores_extracted_run_manifest_and_reuses_local_payloads(tmp_path, monkeypatch, preexisting_payloads, stale_manifest):
     """Regression for the real Kaggle failure before environment installation."""
     import hashlib
     from reproduction import kaggle
     inputs, work, scratch = tmp_path / 'inputs', tmp_path / 'work', tmp_path / 'scratch'
     data_source, saved = inputs / 'voc', inputs / 'saved-run'
-    for path in (data_source, saved / 'phase2'):
+    for path in (data_source, saved):
         path.mkdir(parents=True)
     (data_source / 'weaktr-inputs-manifest.json').write_text('{}')
-    (saved / 'phase2/checkpoint.pth').write_bytes(b'completed snapshot')
-    expected = hashlib.sha256(b'completed snapshot').hexdigest()
-    manifest = dict(schema=1, files={'phase2/checkpoint.pth': expected})
+    files = {name: (name+' completed snapshot').encode() for name in bootstrap.REQUIRED_RUN_FILES}
+    for name, content in files.items():
+        (saved / name).parent.mkdir(parents=True, exist_ok=True)
+        (saved / name).write_bytes(content)
+    manifest = dict(schema=1, files={name: hashlib.sha256(content).hexdigest() for name, content in files.items()
+                                   if not stale_manifest or name.startswith('phase1/')})
     (saved / 'run-manifest.json').write_text(json.dumps(manifest))
     baseline = work / 'weaktr-artifacts'
     if preexisting_payloads:
-        (baseline / 'phase2').mkdir(parents=True)
-        (baseline / 'phase2/checkpoint.pth').write_bytes(b'completed snapshot')
+        for name, content in files.items():
+            if stale_manifest and name.startswith('phase2/'):
+                continue
+            (baseline / name).parent.mkdir(parents=True, exist_ok=True)
+            (baseline / name).write_bytes(content)
+        if stale_manifest:
+            (baseline / 'run-manifest.json').write_text(json.dumps(manifest))
         actual_digest = kaggle.digest
         def local_only_digest(path, *args, **kwargs):
             assert Path(path) != saved / 'phase2/checkpoint.pth', 'Should not reread already verified source payload'
             return actual_digest(path, *args, **kwargs)
-        monkeypatch.setattr(kaggle, 'digest', local_only_digest)
+        if not stale_manifest:
+            monkeypatch.setattr(kaggle, 'digest', local_only_digest)
     monkeypatch.setattr(bootstrap, 'restore_inputs', lambda *args: None)
     installs = []
     def install(directory, env):
         assert env['CUDA_VISIBLE_DEVICES'] == ''
-        assert json.loads((baseline / 'run-manifest.json').read_text()) == manifest
+        restored = json.loads((baseline / 'run-manifest.json').read_text())
+        if stale_manifest:
+            assert set(restored['supplemented_required_files']) == {'phase2/checkpoint.pth', 'phase2/variant.yml'}
+            assert restored['original_manifest_sha256'] == core.sha256(saved / 'run-manifest.json')
+        else:
+            assert restored == manifest
+        for name, content in files.items():
+            assert (baseline / name).read_bytes() == content
+            assert restored['files'][name] == hashlib.sha256(content).hexdigest()
         assert not (baseline / '.restore-in-progress.json').exists()
         installs.append(directory)
         return scratch / 'weaktr-env/bin/python'
@@ -238,6 +256,120 @@ def test_bootstrap_restores_extracted_run_manifest_and_reuses_local_payloads(tmp
     monkeypatch.setattr(bootstrap.subprocess, 'run', lambda argv, **kwargs: commands.append(argv))
     bootstrap.prepare(inputs, work, scratch)
     assert len(installs) == 1 and commands[-1][1:3] == ['-m', 'pytest']
+
+
+def write_candidate(path, complete=True, archive=False, stale=False):
+    import hashlib
+    names = list(bootstrap.REQUIRED_RUN_FILES)
+    if not complete:
+        names = [n for n in names if n.startswith('phase1/')]
+    files = {name: name.encode() for name in names}
+    manifest = dict(schema=1, files={name: hashlib.sha256(content).hexdigest()
+                                   for name, content in files.items()
+                                   if not stale or name.startswith('phase1/')})
+    if archive:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with zipfile.ZipFile(path, 'w') as z:
+            for name, content in files.items():
+                z.writestr(name, content)
+            z.writestr('run-manifest.json', json.dumps(manifest))
+    else:
+        for name, content in files.items():
+            (path / name).parent.mkdir(parents=True, exist_ok=True)
+            (path / name).write_bytes(content)
+        (path / 'run-manifest.json').write_text(json.dumps(manifest))
+    return manifest
+
+
+def test_old_saved_run_fails_before_input_copy_or_environment_install(tmp_path, monkeypatch):
+    inputs = tmp_path / 'inputs'
+    write_candidate(inputs / 'old-phase1', complete=False)
+    monkeypatch.setattr(bootstrap, 'restore_inputs', lambda *args: pytest.fail('Inputs must not copy'))
+    monkeypatch.setattr(bootstrap, 'install_environment', lambda *args: pytest.fail('Environment must not install'))
+    with pytest.raises(ValueError, match='100-epoch') as exc:
+        bootstrap.prepare(inputs, tmp_path / 'work', tmp_path / 'scratch')
+    assert 'phase2/checkpoint.pth' in str(exc.value)
+
+
+def test_saved_run_selection_finds_final_zip_beside_old_extracted_run(tmp_path):
+    write_candidate(tmp_path / 'old', complete=False)
+    write_candidate(tmp_path / 'final.zip', archive=True)
+    selected = bootstrap.select_saved_run(tmp_path)
+    assert selected['path'] == tmp_path / 'final.zip' and selected['archive']
+
+
+def test_saved_run_selection_deduplicates_matching_zip_and_folder(tmp_path):
+    write_candidate(tmp_path / 'folder')
+    write_candidate(tmp_path / 'same.zip', archive=True)
+    assert bootstrap.select_saved_run(tmp_path)['path'] == tmp_path / 'folder'
+
+
+def test_saved_run_selection_accepts_present_unlisted_phase2_files(tmp_path):
+    write_candidate(tmp_path / 'stale', stale=True)
+    selected = bootstrap.select_saved_run(tmp_path)
+    assert selected['path'] == tmp_path / 'stale'
+    assert selected['unlisted'] == ['phase2/checkpoint.pth', 'phase2/variant.yml']
+
+
+@pytest.mark.parametrize('existing_copy', [False, True])
+def test_stale_manifest_restoration_hashes_and_copies_existing_phase2(tmp_path, existing_copy):
+    from reproduction import kaggle
+    source, target = tmp_path / 'input', tmp_path / 'restored'
+    manifest = write_candidate(source, stale=True)
+    if existing_copy:
+        # Reproduce the previous failed job: only the old manifested files copied.
+        for name in manifest['files']:
+            (target / name).parent.mkdir(parents=True, exist_ok=True)
+            (target / name).write_bytes((source / name).read_bytes())
+        (target / 'run-manifest.json').write_text(json.dumps(manifest))
+    kaggle.restore_run(tmp_path, target, str(source), required_files=bootstrap.REQUIRED_RUN_FILES)
+    restored = json.loads((target / 'run-manifest.json').read_text())
+    assert set(restored['supplemented_required_files']) == {'phase2/checkpoint.pth', 'phase2/variant.yml'}
+    assert restored['original_manifest_sha256'] == core.sha256(source / 'run-manifest.json')
+    for name in bootstrap.REQUIRED_RUN_FILES:
+        assert (target / name).read_bytes() == (source / name).read_bytes()
+        assert restored['files'][name] == core.sha256(target / name)
+    # Source inputs remain unchanged; original hashes are never overridden.
+    assert json.loads((source / 'run-manifest.json').read_text()) == manifest
+
+
+def test_supplementing_manifest_preserves_existing_expected_hashes(tmp_path):
+    from reproduction import kaggle
+    source, target = tmp_path / 'input', tmp_path / 'restored'
+    manifest = write_candidate(source, stale=True)
+    (source / 'phase1/checkpoint.pth').write_bytes(b'corrupt original payload')
+    with pytest.raises(ValueError, match='checksum mismatch'):
+        kaggle.restore_run(tmp_path, target, str(source), required_files=bootstrap.REQUIRED_RUN_FILES)
+    assert not (target / 'run-manifest.json').exists()
+    assert json.loads((source / 'run-manifest.json').read_text()) == manifest
+
+
+def test_saved_run_selection_supports_active_folder_without_manifest(tmp_path):
+    write_candidate(tmp_path / 'active')
+    (tmp_path / 'active/run-manifest.json').unlink()
+    selected = bootstrap.select_saved_run(tmp_path)
+    assert selected['path'] == tmp_path / 'active' and not selected['has_manifest']
+
+
+def test_saved_run_selection_requires_explicit_choice_for_different_complete_runs(tmp_path):
+    write_candidate(tmp_path / 'first')
+    manifest = write_candidate(tmp_path / 'second')
+    # Model identity differs even when directory layout is identical.
+    import hashlib
+    (tmp_path / 'second/phase2/checkpoint.pth').write_bytes(b'different weights')
+    manifest['files']['phase2/checkpoint.pth'] = hashlib.sha256(b'different weights').hexdigest()
+    (tmp_path / 'second/run-manifest.json').write_text(json.dumps(manifest))
+    with pytest.raises(ValueError, match='Set RESUME_FROM'):
+        bootstrap.select_saved_run(tmp_path)
+    assert bootstrap.select_saved_run(tmp_path, str(tmp_path / 'first'))['path'] == tmp_path / 'first'
+
+
+def test_preflight_checks_missing_checkpoint_before_full_dataset_scan(tmp_path, monkeypatch):
+    from reproduction.experiments import run
+    monkeypatch.setattr(run, 'validate_voc', lambda *args, **kw: pytest.fail('Data must not scan'))
+    with pytest.raises(ValueError, match='Incomplete saved run'):
+        run.preflight(dict(baseline=str(tmp_path / 'baseline'), output=str(tmp_path / 'output'),
+                           data=str(tmp_path / 'data')))
 
 
 def test_experiment_model_reads_official_tuple_yaml_and_strict_weights(tmp_path, monkeypatch):

@@ -12,6 +12,7 @@ import time
 from reproduction.data import read_ids, sha256, annotation_fingerprint, validate_voc
 from reproduction.experiments.core import (ROOT, CLASSES, DEFAULTS, config_identity, guarded_run,
                                           load_config, pilot_splits, preserve, write_json)
+from reproduction.experiments.bootstrap import REQUIRED_RUN_FILES
 
 
 def provenance(cfg):
@@ -33,11 +34,10 @@ def preflight(cfg):
     from reproduction.checkpoint import load_checkpoint
     baseline, output = Path(cfg['baseline']), Path(cfg['output'])
     voc = Path(cfg['data']) / 'voc12/VOCdevkit/VOC2012'
-    validation = validate_voc(voc, ROOT / 'voc12/train_aug_id.txt', ROOT / 'voc12/val_id.txt',
-                              baseline / 'pseudo', progress=True)
-    for local, remote in [('train_aug_id.txt', 'trainaug.txt'), ('val_id.txt', 'val.txt')]:
-        if read_ids(ROOT / 'voc12' / local) != read_ids(voc / 'ImageSets/Segmentation' / remote):
-            raise ValueError(f'Runtime split differs: {remote}')
+    missing = [name for name in REQUIRED_RUN_FILES if not (baseline / name).is_file()]
+    if missing:
+        raise ValueError(f'Incomplete saved run at {baseline}: missing {missing}. '
+                         'Attach/restore the completed 100-epoch reproduction output or final ZIP.')
     checkpoint_hashes = {}
     for name, stage, epoch in [('phase1/checkpoint.pth', 'phase1', 59),
                                ('phase1/checkpoint_best_mIoU.pth', 'phase1', None),
@@ -54,8 +54,11 @@ def preflight(cfg):
                 raise ValueError('Saved pseudo-label collection differs from Phase-2 training targets')
         checkpoint_hashes[name] = sha256(path)
         del state
-    if not (baseline / 'phase2/variant.yml').exists():
-        raise FileNotFoundError('Missing saved Phase-2 variant.yml')
+    validation = validate_voc(voc, ROOT / 'voc12/train_aug_id.txt', ROOT / 'voc12/val_id.txt',
+                              baseline / 'pseudo', progress=True)
+    for local, remote in [('train_aug_id.txt', 'trainaug.txt'), ('val_id.txt', 'val.txt')]:
+        if read_ids(ROOT / 'voc12' / local) != read_ids(voc / 'ImageSets/Segmentation' / remote):
+            raise ValueError(f'Runtime split differs: {remote}')
     if cfg['clip_patch_size'] != 120:
         raise ValueError('This controlled pilot fixes clipping patch size at official 120 for 480 crops')
     identity = dict(config=config_identity(cfg), checkpoint_sha256=checkpoint_hashes,
