@@ -4,6 +4,8 @@ Prepared 2026-11-16. Implementation and CPU checks do not establish GPU compatib
 
 2026-11-16 measured results now available: [review, interpretation and limitations](results/EXPERIMENT_REVIEW.md), [verification receipt](results/EXPERIMENT_REVIEW_RECEIPT.json), and [comparison figure](results/experiment-results.png). All four three-epoch arms completed on T4; every archive payload hash passes and final scores reproduce from saved masks. Filtering gains 0.428 pp over its raw-label control, residual clipping loses 0.103 pp to hard clipping, and feature gating reduces held diagnostic raw CAM mIoU by 6.944 pp. These are separate pilot protocols, not a replacement final reproduction score. Historical pending statements below describe preparation before this delivered run.
 
+Phase-1 follow-up: [CAM generation and pseudo-label analysis](results/PHASE1_CAM_REVIEW.md) measures raw-versus-saved-pseudo quality, error correction/damage, persistent confusion, class precision/recall and training history using all 10,582 archived predictions. It also traces actual AAF gradient routing and distinguishes training-time refinement from subsequent thresholding/CRF. No additional GPU work was needed. A fully controlled coarse/cross/fine component inference comparison remains a separate unmeasured diagnostic; the existing archive lacks those intermediate maps.
+
 ## Kaggle delivery
 
 Import `WeakTr_Experiments_Kaggle.ipynb`, enable Internet and one T4, and attach:
