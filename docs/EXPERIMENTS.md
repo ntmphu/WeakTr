@@ -2,6 +2,8 @@
 
 Prepared 2026-11-16. Implementation and CPU checks do not establish GPU compatibility or improvement. The completed reproduction remains 71.450% raw / 72.8654278306% CRF VOC val. These experiments are exploratory additions, separate from the original 60/100 schedules and seed-504 artifacts.
 
+2026-11-16 measured results now available: [review, interpretation and limitations](results/EXPERIMENT_REVIEW.md), [verification receipt](results/EXPERIMENT_REVIEW_RECEIPT.json), and [comparison figure](results/experiment-results.png). All four three-epoch arms completed on T4; every archive payload hash passes and final scores reproduce from saved masks. Filtering gains 0.428 pp over its raw-label control, residual clipping loses 0.103 pp to hard clipping, and feature gating reduces held diagnostic raw CAM mIoU by 6.944 pp. These are separate pilot protocols, not a replacement final reproduction score. Historical pending statements below describe preparation before this delivered run.
+
 ## Kaggle delivery
 
 Import `WeakTr_Experiments_Kaggle.ipynb`, enable Internet and one T4, and attach:

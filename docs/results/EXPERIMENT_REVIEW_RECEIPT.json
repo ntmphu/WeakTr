@@ -1,0 +1,1359 @@
+{
+  "archive": "weaktr-experiments.zip",
+  "archive_bytes": 1636771734,
+  "verified_payloads": 38806,
+  "zip_members": 38807,
+  "report_matches_archive": true,
+  "gpu_prediction_scores_recomputed": true,
+  "git_commit": "a62033a7d69a5789ec9e278ae1c1b51393a2c383",
+  "seed": 504,
+  "gpu": [
+    "Tesla T4"
+  ],
+  "torch": "1.13.1+cu117",
+  "cuda": "11.7",
+  "identity": {
+    "config": {
+      "schema": 1,
+      "seed": 504,
+      "cam_dev_images": 100,
+      "cam_holdout_images": 200,
+      "diagnostic_images": 64,
+      "scales": [
+        1.0,
+        1.2
+      ],
+      "background_threshold": 0.43,
+      "agreement": 0.75,
+      "soft_alpha": 0.1,
+      "epochs": 3,
+      "learning_rate": 1e-05,
+      "encoder_lr_scale": 0.1,
+      "batch_size": 4,
+      "num_workers": 2,
+      "start_value": 1.2,
+      "clip_patch_size": 120,
+      "smoke_steps": 0,
+      "example_images": 8,
+      "implementation_sha256": "32253d0b55366facac01c05a0a554660584143efa7077680a01dbab024e6080c"
+    },
+    "checkpoint_sha256": {
+      "phase1/checkpoint.pth": "38bd68c2f83bc47a61dda2e0d332fecc61e82d259ad3ae03cda56e50fd371768",
+      "phase1/checkpoint_best_mIoU.pth": "5d136d2c3d6e7736f5f39350b3baa7f0a53c7c4cde27567b844ca3f6998ea564",
+      "phase2/checkpoint.pth": "891e0cbcbcabdd695d9a56ef7bce9830a8d1b3e3a77752795cfff4ed0a4b67ba"
+    },
+    "pseudo_sha256": "f0ba69493d0734f1f7b0a69516a751d27382c6250330d5e9891bf094bcec0876"
+  },
+  "source_checkpoint_sha256": "891e0cbcbcabdd695d9a56ef7bce9830a8d1b3e3a77752795cfff4ed0a4b67ba",
+  "stages": [
+    {
+      "stage": "cams",
+      "arm": null,
+      "status": "command_completed",
+      "elapsed_seconds": 59.345409905999986,
+      "started_unix": 1794819074.156884
+    },
+    {
+      "stage": "clipping",
+      "arm": null,
+      "status": "command_completed",
+      "elapsed_seconds": 7.9061497610000515,
+      "started_unix": 1794819135.9998298
+    },
+    {
+      "stage": "preflight",
+      "arm": null,
+      "status": "command_completed",
+      "elapsed_seconds": 80.11661247000006,
+      "started_unix": 1794818992.0516574
+    },
+    {
+      "stage": "report",
+      "arm": null,
+      "status": "command_completed",
+      "elapsed_seconds": 0.30279288000019733,
+      "started_unix": 1794837782.3775685
+    },
+    {
+      "stage": "train",
+      "arm": "hard",
+      "status": "command_completed",
+      "elapsed_seconds": 4116.7703744479995,
+      "started_unix": 1794819146.4456077
+    },
+    {
+      "stage": "train",
+      "arm": "soft",
+      "status": "command_completed",
+      "elapsed_seconds": 4123.794490196001,
+      "started_unix": 1794823286.1940925
+    },
+    {
+      "stage": "train",
+      "arm": "uncertainty",
+      "status": "command_completed",
+      "elapsed_seconds": 4152.052855251,
+      "started_unix": 1794833540.565966
+    },
+    {
+      "stage": "train",
+      "arm": "uncertainty-control",
+      "status": "command_completed",
+      "elapsed_seconds": 4152.267342462999,
+      "started_unix": 1794829317.042035
+    },
+    {
+      "stage": "uncertainty-labels",
+      "arm": null,
+      "status": "command_completed",
+      "elapsed_seconds": 1813.7551581070002,
+      "started_unix": 1794827453.3166428
+    }
+  ],
+  "core_stage_span_seconds": 18790.628703832626,
+  "full_label_generation_seconds": 1812.9043636730003,
+  "full_label_count": 10582,
+  "validation_protocol": "full VOC val; single-scale sliding window 480/320, single decoder, FP32, no CRF",
+  "training": {
+    "hard": {
+      "initial_miou": 70.77419800728167,
+      "final_miou": 70.9808315860411,
+      "delta_from_start": 0.2066335787594369,
+      "epochs": [
+        {
+          "epoch": 1,
+          "miou": 70.97424557182933,
+          "train_seconds": 1087.099441159,
+          "validation_seconds": 211.3857199380002,
+          "clipped_fraction": 0.14134721278800882
+        },
+        {
+          "epoch": 2,
+          "miou": 70.97428784222869,
+          "train_seconds": 1084.883443572,
+          "validation_seconds": 211.6874333400001,
+          "clipped_fraction": 0.13804838697972174
+        },
+        {
+          "epoch": 3,
+          "miou": 70.9808315860411,
+          "train_seconds": 1085.2355280019997,
+          "validation_seconds": 213.11252599599993,
+          "clipped_fraction": 0.1416418000227521
+        }
+      ],
+      "class_iou": {
+        "background": 91.39296121802977,
+        "aeroplane": 83.36864869389271,
+        "bicycle": 42.32398794201635,
+        "bird": 89.05154211053078,
+        "boat": 65.54548283744663,
+        "bottle": 78.03131671424529,
+        "bus": 89.0879889357611,
+        "car": 81.94040030527981,
+        "cat": 88.70011807982469,
+        "chair": 30.162122185353283,
+        "cow": 82.02766644651727,
+        "diningtable": 46.97833963653452,
+        "dog": 82.3059786716112,
+        "horse": 81.21828275850571,
+        "motorbike": 76.81112749177558,
+        "person": 77.60252624275776,
+        "pottedplant": 53.63650732036981,
+        "sheep": 85.80682478937729,
+        "sofa": 37.86797460379871,
+        "train": 79.83812236780804,
+        "tvmonitor": 46.89954395542702
+      },
+      "source_identity": {
+        "config": {
+          "schema": 1,
+          "seed": 504,
+          "cam_dev_images": 100,
+          "cam_holdout_images": 200,
+          "diagnostic_images": 64,
+          "scales": [
+            1.0,
+            1.2
+          ],
+          "background_threshold": 0.43,
+          "agreement": 0.75,
+          "soft_alpha": 0.1,
+          "epochs": 3,
+          "learning_rate": 1e-05,
+          "encoder_lr_scale": 0.1,
+          "batch_size": 4,
+          "num_workers": 2,
+          "start_value": 1.2,
+          "clip_patch_size": 120,
+          "smoke_steps": 0,
+          "example_images": 8,
+          "implementation_sha256": "32253d0b55366facac01c05a0a554660584143efa7077680a01dbab024e6080c"
+        },
+        "arm": "hard",
+        "source_sha256": "891e0cbcbcabdd695d9a56ef7bce9830a8d1b3e3a77752795cfff4ed0a4b67ba",
+        "pseudo_sha256": "f0ba69493d0734f1f7b0a69516a751d27382c6250330d5e9891bf094bcec0876",
+        "optimizer": "fresh SGD momentum=.9; constant LR",
+        "loss_reduction": "official all-pixel mean",
+        "training_list_sha256": "d1326bd532648d73bc4b1bd275434eba81930982dc7401a65a8cecb26c028e24",
+        "validation_list_sha256": "6f8edc37993764f6e212237d39546fb595246244147e8a050813c520aac0ade1",
+        "source_variant_sha256": "33675aac8f764a07931ac879d81479a2a7021277146a75dc587c8cc2d1c5f589"
+      },
+      "completion": {
+        "status": "completed",
+        "completed_epochs": 3,
+        "checkpoint_sha256": "b045f757c8f4c65f8f7fde36479a38ae4e3287483151c12405007351f40270b3",
+        "selection": "last planned pilot epoch; no best-epoch selection",
+        "identity": {
+          "config": {
+            "schema": 1,
+            "seed": 504,
+            "cam_dev_images": 100,
+            "cam_holdout_images": 200,
+            "diagnostic_images": 64,
+            "scales": [
+              1.0,
+              1.2
+            ],
+            "background_threshold": 0.43,
+            "agreement": 0.75,
+            "soft_alpha": 0.1,
+            "epochs": 3,
+            "learning_rate": 1e-05,
+            "encoder_lr_scale": 0.1,
+            "batch_size": 4,
+            "num_workers": 2,
+            "start_value": 1.2,
+            "clip_patch_size": 120,
+            "smoke_steps": 0,
+            "example_images": 8,
+            "implementation_sha256": "32253d0b55366facac01c05a0a554660584143efa7077680a01dbab024e6080c"
+          },
+          "arm": "hard",
+          "source_sha256": "891e0cbcbcabdd695d9a56ef7bce9830a8d1b3e3a77752795cfff4ed0a4b67ba",
+          "pseudo_sha256": "f0ba69493d0734f1f7b0a69516a751d27382c6250330d5e9891bf094bcec0876",
+          "optimizer": "fresh SGD momentum=.9; constant LR",
+          "loss_reduction": "official all-pixel mean",
+          "training_list_sha256": "d1326bd532648d73bc4b1bd275434eba81930982dc7401a65a8cecb26c028e24",
+          "validation_list_sha256": "6f8edc37993764f6e212237d39546fb595246244147e8a050813c520aac0ade1",
+          "source_variant_sha256": "33675aac8f764a07931ac879d81479a2a7021277146a75dc587c8cc2d1c5f589"
+        }
+      }
+    },
+    "soft": {
+      "initial_miou": 70.77419800728167,
+      "final_miou": 70.8774954304383,
+      "delta_from_start": 0.10329742315663282,
+      "epochs": [
+        {
+          "epoch": 1,
+          "miou": 70.82623534817779,
+          "train_seconds": 1086.4407040589995,
+          "validation_seconds": 211.78333098500025,
+          "clipped_fraction": 0.14608857179302812
+        },
+        {
+          "epoch": 2,
+          "miou": 70.85929370629772,
+          "train_seconds": 1087.0090252890004,
+          "validation_seconds": 211.58900295500007,
+          "clipped_fraction": 0.14624466732219385
+        },
+        {
+          "epoch": 3,
+          "miou": 70.8774954304383,
+          "train_seconds": 1086.7727258260002,
+          "validation_seconds": 213.4141451859996,
+          "clipped_fraction": 0.15030300441287547
+        }
+      ],
+      "class_iou": {
+        "background": 91.2628037590448,
+        "aeroplane": 82.90016289088841,
+        "bicycle": 41.77670455660915,
+        "bird": 89.01775582256086,
+        "boat": 65.10976718675578,
+        "bottle": 78.11249298908017,
+        "bus": 88.97334820567255,
+        "car": 81.86324752088565,
+        "cat": 88.99932557589854,
+        "chair": 29.653481375126823,
+        "cow": 81.90337215302665,
+        "diningtable": 47.686769080071194,
+        "dog": 82.47495847513481,
+        "horse": 80.7221762278539,
+        "motorbike": 76.99724684516141,
+        "person": 77.31985390365078,
+        "pottedplant": 53.85528754724248,
+        "sheep": 85.82012389472304,
+        "sofa": 37.88804850944496,
+        "train": 79.81598031085508,
+        "tvmonitor": 46.27449720951711
+      },
+      "source_identity": {
+        "config": {
+          "schema": 1,
+          "seed": 504,
+          "cam_dev_images": 100,
+          "cam_holdout_images": 200,
+          "diagnostic_images": 64,
+          "scales": [
+            1.0,
+            1.2
+          ],
+          "background_threshold": 0.43,
+          "agreement": 0.75,
+          "soft_alpha": 0.1,
+          "epochs": 3,
+          "learning_rate": 1e-05,
+          "encoder_lr_scale": 0.1,
+          "batch_size": 4,
+          "num_workers": 2,
+          "start_value": 1.2,
+          "clip_patch_size": 120,
+          "smoke_steps": 0,
+          "example_images": 8,
+          "implementation_sha256": "32253d0b55366facac01c05a0a554660584143efa7077680a01dbab024e6080c"
+        },
+        "arm": "soft",
+        "source_sha256": "891e0cbcbcabdd695d9a56ef7bce9830a8d1b3e3a77752795cfff4ed0a4b67ba",
+        "pseudo_sha256": "f0ba69493d0734f1f7b0a69516a751d27382c6250330d5e9891bf094bcec0876",
+        "optimizer": "fresh SGD momentum=.9; constant LR",
+        "loss_reduction": "official all-pixel mean",
+        "training_list_sha256": "d1326bd532648d73bc4b1bd275434eba81930982dc7401a65a8cecb26c028e24",
+        "validation_list_sha256": "6f8edc37993764f6e212237d39546fb595246244147e8a050813c520aac0ade1",
+        "source_variant_sha256": "33675aac8f764a07931ac879d81479a2a7021277146a75dc587c8cc2d1c5f589"
+      },
+      "completion": {
+        "status": "completed",
+        "completed_epochs": 3,
+        "checkpoint_sha256": "7faa9c12608509121e422bf22f922d2ffcee58d7de51b18c2d39365bb7b13d14",
+        "selection": "last planned pilot epoch; no best-epoch selection",
+        "identity": {
+          "config": {
+            "schema": 1,
+            "seed": 504,
+            "cam_dev_images": 100,
+            "cam_holdout_images": 200,
+            "diagnostic_images": 64,
+            "scales": [
+              1.0,
+              1.2
+            ],
+            "background_threshold": 0.43,
+            "agreement": 0.75,
+            "soft_alpha": 0.1,
+            "epochs": 3,
+            "learning_rate": 1e-05,
+            "encoder_lr_scale": 0.1,
+            "batch_size": 4,
+            "num_workers": 2,
+            "start_value": 1.2,
+            "clip_patch_size": 120,
+            "smoke_steps": 0,
+            "example_images": 8,
+            "implementation_sha256": "32253d0b55366facac01c05a0a554660584143efa7077680a01dbab024e6080c"
+          },
+          "arm": "soft",
+          "source_sha256": "891e0cbcbcabdd695d9a56ef7bce9830a8d1b3e3a77752795cfff4ed0a4b67ba",
+          "pseudo_sha256": "f0ba69493d0734f1f7b0a69516a751d27382c6250330d5e9891bf094bcec0876",
+          "optimizer": "fresh SGD momentum=.9; constant LR",
+          "loss_reduction": "official all-pixel mean",
+          "training_list_sha256": "d1326bd532648d73bc4b1bd275434eba81930982dc7401a65a8cecb26c028e24",
+          "validation_list_sha256": "6f8edc37993764f6e212237d39546fb595246244147e8a050813c520aac0ade1",
+          "source_variant_sha256": "33675aac8f764a07931ac879d81479a2a7021277146a75dc587c8cc2d1c5f589"
+        }
+      }
+    },
+    "uncertainty-control": {
+      "initial_miou": 70.77419800728167,
+      "final_miou": 70.3882365682222,
+      "delta_from_start": -0.38596143905947145,
+      "epochs": [
+        {
+          "epoch": 1,
+          "miou": 70.69216703917336,
+          "train_seconds": 1097.0439490970002,
+          "validation_seconds": 211.6004329949992,
+          "clipped_fraction": 0.1444479721582298
+        },
+        {
+          "epoch": 2,
+          "miou": 70.41816782438795,
+          "train_seconds": 1096.7930885330006,
+          "validation_seconds": 211.6654312189985,
+          "clipped_fraction": 0.14410292690186685
+        },
+        {
+          "epoch": 3,
+          "miou": 70.3882365682222,
+          "train_seconds": 1096.4166461429995,
+          "validation_seconds": 213.30815807700128,
+          "clipped_fraction": 0.14386840457357825
+        }
+      ],
+      "class_iou": {
+        "background": 91.0678699198812,
+        "aeroplane": 78.42620591629623,
+        "bicycle": 40.71768677896213,
+        "bird": 89.5795198198104,
+        "boat": 62.189911285331135,
+        "bottle": 77.56618631722955,
+        "bus": 88.62480795493343,
+        "car": 81.58156622923984,
+        "cat": 89.56663399390882,
+        "chair": 29.32371380142871,
+        "cow": 83.11832901330024,
+        "diningtable": 47.985348846365625,
+        "dog": 82.85441996600653,
+        "horse": 79.51284572000017,
+        "motorbike": 76.58913365235918,
+        "person": 77.17629957001452,
+        "pottedplant": 52.99290508127549,
+        "sheep": 86.81758508689484,
+        "sofa": 37.680816490858334,
+        "train": 79.24695146871957,
+        "tvmonitor": 45.53423101985005
+      },
+      "source_identity": {
+        "config": {
+          "schema": 1,
+          "seed": 504,
+          "cam_dev_images": 100,
+          "cam_holdout_images": 200,
+          "diagnostic_images": 64,
+          "scales": [
+            1.0,
+            1.2
+          ],
+          "background_threshold": 0.43,
+          "agreement": 0.75,
+          "soft_alpha": 0.1,
+          "epochs": 3,
+          "learning_rate": 1e-05,
+          "encoder_lr_scale": 0.1,
+          "batch_size": 4,
+          "num_workers": 2,
+          "start_value": 1.2,
+          "clip_patch_size": 120,
+          "smoke_steps": 0,
+          "example_images": 8,
+          "implementation_sha256": "32253d0b55366facac01c05a0a554660584143efa7077680a01dbab024e6080c"
+        },
+        "arm": "uncertainty-control",
+        "source_sha256": "891e0cbcbcabdd695d9a56ef7bce9830a8d1b3e3a77752795cfff4ed0a4b67ba",
+        "pseudo_sha256": "5eeb3c3e977ac6110b51baa6e534c51b1a38c59913e3ec885275443b64da86ab",
+        "optimizer": "fresh SGD momentum=.9; constant LR",
+        "loss_reduction": "valid-pixel mean",
+        "training_list_sha256": "d1326bd532648d73bc4b1bd275434eba81930982dc7401a65a8cecb26c028e24",
+        "validation_list_sha256": "6f8edc37993764f6e212237d39546fb595246244147e8a050813c520aac0ade1",
+        "source_variant_sha256": "33675aac8f764a07931ac879d81479a2a7021277146a75dc587c8cc2d1c5f589"
+      },
+      "completion": {
+        "status": "completed",
+        "completed_epochs": 3,
+        "checkpoint_sha256": "25140d1a950e47db5cd164b62eaec377dba1fbd0dd0636a9651a2bde08736ca1",
+        "selection": "last planned pilot epoch; no best-epoch selection",
+        "identity": {
+          "config": {
+            "schema": 1,
+            "seed": 504,
+            "cam_dev_images": 100,
+            "cam_holdout_images": 200,
+            "diagnostic_images": 64,
+            "scales": [
+              1.0,
+              1.2
+            ],
+            "background_threshold": 0.43,
+            "agreement": 0.75,
+            "soft_alpha": 0.1,
+            "epochs": 3,
+            "learning_rate": 1e-05,
+            "encoder_lr_scale": 0.1,
+            "batch_size": 4,
+            "num_workers": 2,
+            "start_value": 1.2,
+            "clip_patch_size": 120,
+            "smoke_steps": 0,
+            "example_images": 8,
+            "implementation_sha256": "32253d0b55366facac01c05a0a554660584143efa7077680a01dbab024e6080c"
+          },
+          "arm": "uncertainty-control",
+          "source_sha256": "891e0cbcbcabdd695d9a56ef7bce9830a8d1b3e3a77752795cfff4ed0a4b67ba",
+          "pseudo_sha256": "5eeb3c3e977ac6110b51baa6e534c51b1a38c59913e3ec885275443b64da86ab",
+          "optimizer": "fresh SGD momentum=.9; constant LR",
+          "loss_reduction": "valid-pixel mean",
+          "training_list_sha256": "d1326bd532648d73bc4b1bd275434eba81930982dc7401a65a8cecb26c028e24",
+          "validation_list_sha256": "6f8edc37993764f6e212237d39546fb595246244147e8a050813c520aac0ade1",
+          "source_variant_sha256": "33675aac8f764a07931ac879d81479a2a7021277146a75dc587c8cc2d1c5f589"
+        }
+      }
+    },
+    "uncertainty": {
+      "initial_miou": 70.77419800728167,
+      "final_miou": 70.81607860406018,
+      "delta_from_start": 0.04188059677851186,
+      "epochs": [
+        {
+          "epoch": 1,
+          "miou": 70.83716838072613,
+          "train_seconds": 1097.0342650179991,
+          "validation_seconds": 211.63919930700285,
+          "clipped_fraction": 0.1348800169537935
+        },
+        {
+          "epoch": 2,
+          "miou": 70.84735759837874,
+          "train_seconds": 1096.8359595229995,
+          "validation_seconds": 211.61689413500062,
+          "clipped_fraction": 0.13414256018636792
+        },
+        {
+          "epoch": 3,
+          "miou": 70.81607860406018,
+          "train_seconds": 1096.5862993990013,
+          "validation_seconds": 213.62554558199918,
+          "clipped_fraction": 0.13318758530620275
+        }
+      ],
+      "class_iou": {
+        "background": 91.3796749870561,
+        "aeroplane": 80.77658363502492,
+        "bicycle": 41.90761741948406,
+        "bird": 89.5932453701609,
+        "boat": 65.03806137447958,
+        "bottle": 77.910151368247,
+        "bus": 88.77281327610892,
+        "car": 81.6441940153419,
+        "cat": 89.18383604105476,
+        "chair": 30.605975445386118,
+        "cow": 82.7155147116205,
+        "diningtable": 45.85473145253094,
+        "dog": 82.56181983517367,
+        "horse": 80.80292491186852,
+        "motorbike": 76.68608408174657,
+        "person": 77.709715676815,
+        "pottedplant": 53.310860971119894,
+        "sheep": 86.77206635761128,
+        "sofa": 37.49349645944354,
+        "train": 79.40712501643223,
+        "tvmonitor": 47.01115827855746
+      },
+      "source_identity": {
+        "config": {
+          "schema": 1,
+          "seed": 504,
+          "cam_dev_images": 100,
+          "cam_holdout_images": 200,
+          "diagnostic_images": 64,
+          "scales": [
+            1.0,
+            1.2
+          ],
+          "background_threshold": 0.43,
+          "agreement": 0.75,
+          "soft_alpha": 0.1,
+          "epochs": 3,
+          "learning_rate": 1e-05,
+          "encoder_lr_scale": 0.1,
+          "batch_size": 4,
+          "num_workers": 2,
+          "start_value": 1.2,
+          "clip_patch_size": 120,
+          "smoke_steps": 0,
+          "example_images": 8,
+          "implementation_sha256": "32253d0b55366facac01c05a0a554660584143efa7077680a01dbab024e6080c"
+        },
+        "arm": "uncertainty",
+        "source_sha256": "891e0cbcbcabdd695d9a56ef7bce9830a8d1b3e3a77752795cfff4ed0a4b67ba",
+        "pseudo_sha256": "edcbed3bb32eecb216ca9e2060871a7ca946f237d06433bd457049c0e66b7d9e",
+        "optimizer": "fresh SGD momentum=.9; constant LR",
+        "loss_reduction": "valid-pixel mean",
+        "training_list_sha256": "d1326bd532648d73bc4b1bd275434eba81930982dc7401a65a8cecb26c028e24",
+        "validation_list_sha256": "6f8edc37993764f6e212237d39546fb595246244147e8a050813c520aac0ade1",
+        "source_variant_sha256": "33675aac8f764a07931ac879d81479a2a7021277146a75dc587c8cc2d1c5f589"
+      },
+      "completion": {
+        "status": "completed",
+        "completed_epochs": 3,
+        "checkpoint_sha256": "505d7ddeaecf2f5a45fb51931aa38f0ac861d5621a43249d0ba085e1e8911031",
+        "selection": "last planned pilot epoch; no best-epoch selection",
+        "identity": {
+          "config": {
+            "schema": 1,
+            "seed": 504,
+            "cam_dev_images": 100,
+            "cam_holdout_images": 200,
+            "diagnostic_images": 64,
+            "scales": [
+              1.0,
+              1.2
+            ],
+            "background_threshold": 0.43,
+            "agreement": 0.75,
+            "soft_alpha": 0.1,
+            "epochs": 3,
+            "learning_rate": 1e-05,
+            "encoder_lr_scale": 0.1,
+            "batch_size": 4,
+            "num_workers": 2,
+            "start_value": 1.2,
+            "clip_patch_size": 120,
+            "smoke_steps": 0,
+            "example_images": 8,
+            "implementation_sha256": "32253d0b55366facac01c05a0a554660584143efa7077680a01dbab024e6080c"
+          },
+          "arm": "uncertainty",
+          "source_sha256": "891e0cbcbcabdd695d9a56ef7bce9830a8d1b3e3a77752795cfff4ed0a4b67ba",
+          "pseudo_sha256": "edcbed3bb32eecb216ca9e2060871a7ca946f237d06433bd457049c0e66b7d9e",
+          "optimizer": "fresh SGD momentum=.9; constant LR",
+          "loss_reduction": "valid-pixel mean",
+          "training_list_sha256": "d1326bd532648d73bc4b1bd275434eba81930982dc7401a65a8cecb26c028e24",
+          "validation_list_sha256": "6f8edc37993764f6e212237d39546fb595246244147e8a050813c520aac0ade1",
+          "source_variant_sha256": "33675aac8f764a07931ac879d81479a2a7021277146a75dc587c8cc2d1c5f589"
+        }
+      }
+    }
+  },
+  "comparisons": {
+    "soft-minus-hard": {
+      "delta_pp": -0.10333615560280407,
+      "paired_image_bootstrap_percentile95_pp": [
+        -0.20909410174285625,
+        -0.008543674491372513
+      ],
+      "class_delta_pp": {
+        "background": -0.1301574589849679,
+        "aeroplane": -0.4684858030042989,
+        "bicycle": -0.547283385407205,
+        "bird": -0.03378628796991734,
+        "boat": -0.4357156506908524,
+        "bottle": 0.08117627483487411,
+        "bus": -0.1146407300885528,
+        "car": -0.0771527843941584,
+        "cat": 0.2992074960738478,
+        "chair": -0.5086408102264599,
+        "cow": -0.12429429349062104,
+        "diningtable": 0.7084294435366729,
+        "dog": 0.1689798035236123,
+        "horse": -0.4961065306518151,
+        "motorbike": 0.18611935338583407,
+        "person": -0.28267233910698053,
+        "pottedplant": 0.21878022687267418,
+        "sheep": 0.013299105345751627,
+        "sofa": 0.020073905646249557,
+        "train": -0.022142056952958455,
+        "tvmonitor": -0.6250467459099127
+      }
+    },
+    "uncertainty-minus-uncertainty-control": {
+      "delta_pp": 0.4278420358379833,
+      "paired_image_bootstrap_percentile95_pp": [
+        0.1473712952912532,
+        0.801600390993195
+      ],
+      "class_delta_pp": {
+        "background": 0.31180506717490175,
+        "aeroplane": 2.3503777187286943,
+        "bicycle": 1.1899306405219292,
+        "bird": 0.01372555035050027,
+        "boat": 2.8481500891484473,
+        "bottle": 0.3439650510174488,
+        "bus": 0.14800532117548926,
+        "car": 0.06262778610205544,
+        "cat": -0.3827979528540624,
+        "chair": 1.2822616439574084,
+        "cow": -0.4028143016797401,
+        "diningtable": -2.130617393834683,
+        "dog": -0.2926001308328665,
+        "horse": 1.2900791918683439,
+        "motorbike": 0.09695042938739107,
+        "person": 0.5334161068004732,
+        "pottedplant": 0.3179558898444057,
+        "sheep": -0.04551872928355749,
+        "sofa": -0.18732003141479225,
+        "train": 0.16017354771265957,
+        "tvmonitor": 1.4769272587074127
+      }
+    }
+  },
+  "bootstrap": {
+    "replicates": 2000,
+    "seed": 504,
+    "unit": "paired VOC validation image",
+    "caveat": "Fixed trained models only. Does not measure variation across training seeds or account for repeated exploratory comparisons."
+  },
+  "cams": {
+    "dev": {
+      "arms": {
+        "baseline": {
+          "miou": 62.41003506425056,
+          "pixel_accuracy": 88.27552171954672,
+          "images": 100,
+          "coverage_percent": 100.0,
+          "class_coverage": {
+            "background": 100.0,
+            "aeroplane": 100.0,
+            "bicycle": 100.0,
+            "bird": 100.0,
+            "boat": 100.0,
+            "bottle": 100.0,
+            "bus": 100.0,
+            "car": 100.0,
+            "cat": 100.0,
+            "chair": 100.0,
+            "cow": 100.0,
+            "diningtable": 100.0,
+            "dog": 100.0,
+            "horse": 100.0,
+            "motorbike": 100.0,
+            "person": 100.0,
+            "pottedplant": 100.0,
+            "sheep": 100.0,
+            "sofa": 100.0,
+            "train": 100.0,
+            "tvmonitor": 100.0
+          },
+          "class_iou": {
+            "background": 86.22620560259348,
+            "aeroplane": 67.42394410282817,
+            "bicycle": 24.022191880260635,
+            "bird": 76.00169591075465,
+            "boat": 48.597753789117874,
+            "bottle": 48.527558152858944,
+            "bus": 78.95305890131085,
+            "car": 42.86678046005039,
+            "cat": 77.20943006621933,
+            "chair": 29.86082488183954,
+            "cow": 92.38116854867692,
+            "diningtable": 53.43738549002108,
+            "dog": 80.2898694010527,
+            "horse": 80.68878257087502,
+            "motorbike": 68.08128596076227,
+            "person": 55.21383854717188,
+            "pottedplant": 35.876639092972475,
+            "sheep": 82.1815056451928,
+            "sofa": 62.83155617135977,
+            "train": 76.64190618587857,
+            "tvmonitor": 43.29735498746464
+          }
+        },
+        "gated": {
+          "miou": 61.26608166154795,
+          "pixel_accuracy": 89.23444473320869,
+          "images": 100,
+          "coverage_percent": 100.0,
+          "class_coverage": {
+            "background": 100.0,
+            "aeroplane": 100.0,
+            "bicycle": 100.0,
+            "bird": 100.0,
+            "boat": 100.0,
+            "bottle": 100.0,
+            "bus": 100.0,
+            "car": 100.0,
+            "cat": 100.0,
+            "chair": 100.0,
+            "cow": 100.0,
+            "diningtable": 100.0,
+            "dog": 100.0,
+            "horse": 100.0,
+            "motorbike": 100.0,
+            "person": 100.0,
+            "pottedplant": 100.0,
+            "sheep": 100.0,
+            "sofa": 100.0,
+            "train": 100.0,
+            "tvmonitor": 100.0
+          },
+          "class_iou": {
+            "background": 87.42150258841903,
+            "aeroplane": 62.616672102801026,
+            "bicycle": 30.410476169759196,
+            "bird": 71.49758632261776,
+            "boat": 58.54645936678097,
+            "bottle": 55.31635599894985,
+            "bus": 80.03470643322575,
+            "car": 48.242834972496944,
+            "cat": 75.51283367556468,
+            "chair": 39.334177220469336,
+            "cow": 44.186061364739544,
+            "diningtable": 48.240420887756805,
+            "dog": 81.0460376044732,
+            "horse": 78.89010233385916,
+            "motorbike": 58.881065372308356,
+            "person": 56.75201602044663,
+            "pottedplant": 32.98303242856085,
+            "sheep": 82.95777466479888,
+            "sofa": 63.60942232192933,
+            "train": 81.16906588331143,
+            "tvmonitor": 48.93911115923843
+          }
+        },
+        "agreement": {
+          "miou": 66.7467635767283,
+          "pixel_accuracy": 90.22666381183288,
+          "images": 100,
+          "coverage_percent": 96.21445835572034,
+          "class_coverage": {
+            "background": 96.64991604107142,
+            "aeroplane": 96.94460641399417,
+            "bicycle": 99.44361224053071,
+            "bird": 96.40319234902572,
+            "boat": 98.1246125232486,
+            "bottle": 99.06168895987223,
+            "bus": 92.28002251602894,
+            "car": 96.33063650032219,
+            "cat": 96.57831869891712,
+            "chair": 93.16642604292502,
+            "cow": 98.0014900597331,
+            "diningtable": 90.00831736158825,
+            "dog": 94.58510938697576,
+            "horse": 93.34349375348818,
+            "motorbike": 92.69648124736621,
+            "person": 94.31635510826749,
+            "pottedplant": 89.52308826753293,
+            "sheep": 96.93760601476184,
+            "sofa": 93.99331774957471,
+            "train": 98.22985038930669,
+            "tvmonitor": 96.96474844766048
+          },
+          "class_iou": {
+            "background": 88.39343535855356,
+            "aeroplane": 70.8951317396615,
+            "bicycle": 31.862170425028157,
+            "bird": 77.8190388359463,
+            "boat": 56.96493692254165,
+            "bottle": 53.86090513935055,
+            "bus": 82.77177333445945,
+            "car": 52.501930815820494,
+            "cat": 78.45097831086579,
+            "chair": 33.27327829374918,
+            "cow": 94.26138804629424,
+            "diningtable": 59.49871404790332,
+            "dog": 83.53043578887522,
+            "horse": 82.70785907859079,
+            "motorbike": 70.81955967157587,
+            "person": 59.77940918465611,
+            "pottedplant": 44.0304904181718,
+            "sheep": 85.89031368781588,
+            "sofa": 65.55591785042577,
+            "train": 80.87778806212751,
+            "tvmonitor": 47.93658009888049
+          }
+        },
+        "saved_crf_reference": {
+          "miou": 66.16858273417117,
+          "pixel_accuracy": 89.2610114329626,
+          "images": 100,
+          "coverage_percent": 100.0,
+          "class_coverage": {
+            "background": 100.0,
+            "aeroplane": 100.0,
+            "bicycle": 100.0,
+            "bird": 100.0,
+            "boat": 100.0,
+            "bottle": 100.0,
+            "bus": 100.0,
+            "car": 100.0,
+            "cat": 100.0,
+            "chair": 100.0,
+            "cow": 100.0,
+            "diningtable": 100.0,
+            "dog": 100.0,
+            "horse": 100.0,
+            "motorbike": 100.0,
+            "person": 100.0,
+            "pottedplant": 100.0,
+            "sheep": 100.0,
+            "sofa": 100.0,
+            "train": 100.0,
+            "tvmonitor": 100.0
+          },
+          "class_iou": {
+            "background": 87.48045029774062,
+            "aeroplane": 72.06316037815338,
+            "bicycle": 25.75749047860265,
+            "bird": 80.91080174879195,
+            "boat": 60.12519455911213,
+            "bottle": 71.26557837458311,
+            "bus": 77.80701754385964,
+            "car": 43.80520410599188,
+            "cat": 79.76390236114992,
+            "chair": 30.710820149007354,
+            "cow": 95.28543064405196,
+            "diningtable": 55.18328009096324,
+            "dog": 83.38601728814221,
+            "horse": 87.11589489001113,
+            "motorbike": 66.53540340649971,
+            "person": 55.715987347253595,
+            "pottedplant": 40.57632398753894,
+            "sheep": 91.0238236773515,
+            "sofa": 63.32768921260152,
+            "train": 79.31434188582972,
+            "tvmonitor": 42.386424990358655
+          }
+        }
+      },
+      "rejected_pixel_accuracy": 38.684710885901055,
+      "rejected_valid_pixels": 648481,
+      "boundary_valid_pixels": 2421,
+      "total_valid_pixels": 17130468
+    },
+    "holdout": {
+      "arms": {
+        "baseline": {
+          "miou": 68.41566296702419,
+          "pixel_accuracy": 90.81220228200146,
+          "images": 200,
+          "coverage_percent": 100.0,
+          "class_coverage": {
+            "background": 100.0,
+            "aeroplane": 100.0,
+            "bicycle": 100.0,
+            "bird": 100.0,
+            "boat": 100.0,
+            "bottle": 100.0,
+            "bus": 100.0,
+            "car": 100.0,
+            "cat": 100.0,
+            "chair": 100.0,
+            "cow": 100.0,
+            "diningtable": 100.0,
+            "dog": 100.0,
+            "horse": 100.0,
+            "motorbike": 100.0,
+            "person": 100.0,
+            "pottedplant": 100.0,
+            "sheep": 100.0,
+            "sofa": 100.0,
+            "train": 100.0,
+            "tvmonitor": 100.0
+          },
+          "class_iou": {
+            "background": 88.72422246434523,
+            "aeroplane": 60.070860608416055,
+            "bicycle": 50.01382076942704,
+            "bird": 86.54889611155083,
+            "boat": 47.65261488015824,
+            "bottle": 54.82548991560578,
+            "bus": 83.96337168349378,
+            "car": 73.59635069525126,
+            "cat": 86.53674794012669,
+            "chair": 37.15650187659803,
+            "cow": 82.18921370746239,
+            "diningtable": 65.52263349355759,
+            "dog": 83.34599335242511,
+            "horse": 57.3905201644903,
+            "motorbike": 81.13323488309861,
+            "person": 71.78732395700744,
+            "pottedplant": 47.38209110863646,
+            "sheep": 73.6872465883456,
+            "sofa": 67.36760736599923,
+            "train": 68.40517276233757,
+            "tvmonitor": 69.42900797917493
+          }
+        },
+        "gated": {
+          "miou": 61.471852838251486,
+          "pixel_accuracy": 88.63817320608833,
+          "images": 200,
+          "coverage_percent": 100.0,
+          "class_coverage": {
+            "background": 100.0,
+            "aeroplane": 100.0,
+            "bicycle": 100.0,
+            "bird": 100.0,
+            "boat": 100.0,
+            "bottle": 100.0,
+            "bus": 100.0,
+            "car": 100.0,
+            "cat": 100.0,
+            "chair": 100.0,
+            "cow": 100.0,
+            "diningtable": 100.0,
+            "dog": 100.0,
+            "horse": 100.0,
+            "motorbike": 100.0,
+            "person": 100.0,
+            "pottedplant": 100.0,
+            "sheep": 100.0,
+            "sofa": 100.0,
+            "train": 100.0,
+            "tvmonitor": 100.0
+          },
+          "class_iou": {
+            "background": 86.36916024977306,
+            "aeroplane": 58.54888549773211,
+            "bicycle": 50.80821888850525,
+            "bird": 51.41394134909016,
+            "boat": 53.97745232325361,
+            "bottle": 56.1375924291531,
+            "bus": 82.48847629039749,
+            "car": 51.18411161771215,
+            "cat": 60.82498230685154,
+            "chair": 38.76808891541101,
+            "cow": 81.63169646391867,
+            "diningtable": 62.47439582900677,
+            "dog": 84.63940950823071,
+            "horse": 68.89765109171043,
+            "motorbike": 80.15685852007917,
+            "person": 70.01672070637339,
+            "pottedplant": 52.88325099364808,
+            "sheep": 53.61186119450548,
+            "sofa": 65.30454222605172,
+            "train": 60.29923934716786,
+            "tvmonitor": 20.472373854709254
+          }
+        },
+        "agreement": {
+          "miou": 71.59199979219207,
+          "pixel_accuracy": 92.29166939690802,
+          "images": 200,
+          "coverage_percent": 96.47344448635585,
+          "class_coverage": {
+            "background": 97.29873065564476,
+            "aeroplane": 93.1455563091299,
+            "bicycle": 94.388011404041,
+            "bird": 98.2855854685506,
+            "boat": 91.54547695341385,
+            "bottle": 93.41880341880342,
+            "bus": 97.93673585689791,
+            "car": 95.23016567861178,
+            "cat": 93.88009874138262,
+            "chair": 92.4146587982133,
+            "cow": 95.89883869235416,
+            "diningtable": 95.04068373038513,
+            "dog": 95.3942738396204,
+            "horse": 93.62614105222652,
+            "motorbike": 94.6951482390396,
+            "person": 94.78974805238387,
+            "pottedplant": 96.19936858519627,
+            "sheep": 94.37483065188162,
+            "sofa": 94.51740290487707,
+            "train": 92.70420723243521,
+            "tvmonitor": 75.73196395077542
+          },
+          "class_iou": {
+            "background": 90.6018308677567,
+            "aeroplane": 63.234338404136835,
+            "bicycle": 53.08822488974837,
+            "bird": 91.21037671356096,
+            "boat": 51.93474842767296,
+            "bottle": 62.30213064386855,
+            "bus": 85.88660017593767,
+            "car": 76.18811972891368,
+            "cat": 88.05817629811989,
+            "chair": 40.860753901465635,
+            "cow": 85.3857015706456,
+            "diningtable": 71.37081166902108,
+            "dog": 85.36195846215445,
+            "horse": 71.46023332798899,
+            "motorbike": 83.64818311970917,
+            "person": 75.61681511558808,
+            "pottedplant": 51.905998629296974,
+            "sheep": 73.54405657917377,
+            "sofa": 70.30473498402269,
+            "train": 70.37261422333518,
+            "tvmonitor": 61.09558790391635
+          }
+        },
+        "saved_crf_reference": {
+          "miou": 70.79414271917604,
+          "pixel_accuracy": 91.8774076487155,
+          "images": 200,
+          "coverage_percent": 100.0,
+          "class_coverage": {
+            "background": 100.0,
+            "aeroplane": 100.0,
+            "bicycle": 100.0,
+            "bird": 100.0,
+            "boat": 100.0,
+            "bottle": 100.0,
+            "bus": 100.0,
+            "car": 100.0,
+            "cat": 100.0,
+            "chair": 100.0,
+            "cow": 100.0,
+            "diningtable": 100.0,
+            "dog": 100.0,
+            "horse": 100.0,
+            "motorbike": 100.0,
+            "person": 100.0,
+            "pottedplant": 100.0,
+            "sheep": 100.0,
+            "sofa": 100.0,
+            "train": 100.0,
+            "tvmonitor": 100.0
+          },
+          "class_iou": {
+            "background": 90.12302637650606,
+            "aeroplane": 73.6681442064066,
+            "bicycle": 52.941263320303705,
+            "bird": 96.61704955952926,
+            "boat": 50.89784168084869,
+            "bottle": 56.53029320928814,
+            "bus": 83.41361338372272,
+            "car": 74.28600504105944,
+            "cat": 90.51164044039332,
+            "chair": 37.88602023813216,
+            "cow": 82.09502302896252,
+            "diningtable": 66.13276352270118,
+            "dog": 85.08637840802348,
+            "horse": 58.83525448870484,
+            "motorbike": 83.13773772724892,
+            "person": 75.20666495506498,
+            "pottedplant": 49.98322312565032,
+            "sheep": 74.39081252027246,
+            "sofa": 69.07000018533276,
+            "train": 66.6736069942091,
+            "tvmonitor": 69.19063469033598
+          }
+        }
+      },
+      "rejected_pixel_accuracy": 50.3394837817225,
+      "rejected_valid_pixels": 1182678,
+      "boundary_valid_pixels": 4206,
+      "total_valid_pixels": 33536350
+    }
+  },
+  "clipping": {
+    "totals": [
+      11785089,
+      713653,
+      541128,
+      896658
+    ],
+    "columns": [
+      "correct_kept",
+      "correct_rejected",
+      "incorrect_kept",
+      "incorrect_rejected"
+    ],
+    "correct_label_rejection_percent": 5.70979863413454,
+    "incorrect_label_rejection_percent": 62.36380101072065,
+    "accuracy_of_rejected_percent": 44.31771254124203,
+    "accuracy_of_kept_percent": 95.60994261256313
+  },
+  "clipping_per_class": {
+    "background": {
+      "correct_rejection_percent": 4.124175666634808,
+      "incorrect_rejection_percent": 62.6424393890215,
+      "counts": [
+        9630228,
+        414252,
+        429303,
+        719870
+      ]
+    },
+    "aeroplane": {
+      "correct_rejection_percent": 1.956208921557189,
+      "incorrect_rejection_percent": 100.0,
+      "counts": [
+        50420,
+        1006,
+        0,
+        23
+      ]
+    },
+    "bicycle": {
+      "correct_rejection_percent": 10.36856786752923,
+      "incorrect_rejection_percent": 55.76923076923077,
+      "counts": [
+        15102,
+        1747,
+        161,
+        203
+      ]
+    },
+    "bird": {
+      "correct_rejection_percent": 3.287465810566779,
+      "incorrect_rejection_percent": 70.78070492000481,
+      "counts": [
+        183160,
+        6226,
+        2429,
+        5884
+      ]
+    },
+    "boat": {
+      "correct_rejection_percent": 23.79073917535456,
+      "incorrect_rejection_percent": 87.9057924888606,
+      "counts": [
+        73026,
+        22797,
+        190,
+        1381
+      ]
+    },
+    "bottle": {
+      "correct_rejection_percent": 99.9400479616307,
+      "incorrect_rejection_percent": 0.0,
+      "counts": [
+        3,
+        5001,
+        1252,
+        0
+      ]
+    },
+    "bus": {
+      "correct_rejection_percent": 1.216500917472759,
+      "incorrect_rejection_percent": 94.880073800738,
+      "counts": [
+        87212,
+        1074,
+        444,
+        8228
+      ]
+    },
+    "car": {
+      "correct_rejection_percent": 11.325024179273344,
+      "incorrect_rejection_percent": 81.02766798418972,
+      "counts": [
+        48593,
+        6206,
+        384,
+        1640
+      ]
+    },
+    "cat": {
+      "correct_rejection_percent": 3.5440446453979195,
+      "incorrect_rejection_percent": 20.471938775510203,
+      "counts": [
+        244049,
+        8967,
+        1247,
+        321
+      ]
+    },
+    "chair": {
+      "correct_rejection_percent": 37.77821191516532,
+      "incorrect_rejection_percent": 44.390728476821195,
+      "counts": [
+        130583,
+        79284,
+        16794,
+        13406
+      ]
+    },
+    "cow": {
+      "correct_rejection_percent": 3.827004219409283,
+      "incorrect_rejection_percent": 6.0109289617486334,
+      "counts": [
+        22793,
+        907,
+        172,
+        11
+      ]
+    },
+    "diningtable": {
+      "correct_rejection_percent": 85.95139575098814,
+      "incorrect_rejection_percent": 62.72755008644361,
+      "counts": [
+        9099,
+        55669,
+        3665,
+        6168
+      ]
+    },
+    "dog": {
+      "correct_rejection_percent": 4.359747246484855,
+      "incorrect_rejection_percent": 52.385767062026055,
+      "counts": [
+        266843,
+        12164,
+        12244,
+        13471
+      ]
+    },
+    "horse": {
+      "correct_rejection_percent": 33.409420130810766,
+      "incorrect_rejection_percent": 5.740870786516854,
+      "counts": [
+        15170,
+        7611,
+        5369,
+        327
+      ]
+    },
+    "motorbike": {
+      "correct_rejection_percent": 6.648145014709976,
+      "incorrect_rejection_percent": 80.71833648393195,
+      "counts": [
+        171029,
+        12180,
+        2448,
+        10248
+      ]
+    },
+    "person": {
+      "correct_rejection_percent": 5.445972685383775,
+      "incorrect_rejection_percent": 62.81870868591108,
+      "counts": [
+        273333,
+        15743,
+        40161,
+        67853
+      ]
+    },
+    "pottedplant": {
+      "correct_rejection_percent": 22.52280184998579,
+      "incorrect_rejection_percent": 74.26416572799843,
+      "counts": [
+        29986,
+        8717,
+        5255,
+        15164
+      ]
+    },
+    "sheep": {
+      "correct_rejection_percent": 23.45472769796191,
+      "incorrect_rejection_percent": 28.241430700447093,
+      "counts": [
+        16037,
+        4914,
+        963,
+        379
+      ]
+    },
+    "sofa": {
+      "correct_rejection_percent": 20.05202937587771,
+      "incorrect_rejection_percent": 45.82437275985663,
+      "counts": [
+        138908,
+        34840,
+        3023,
+        2557
+      ]
+    },
+    "train": {
+      "correct_rejection_percent": 0.9656496722455153,
+      "incorrect_rejection_percent": 89.35924015235524,
+      "counts": [
+        286750,
+        2796,
+        2207,
+        18534
+      ]
+    },
+    "tvmonitor": {
+      "correct_rejection_percent": 11.07393809254484,
+      "incorrect_rejection_percent": 45.02806571885115,
+      "counts": [
+        92765,
+        11552,
+        13417,
+        10990
+      ]
+    }
+  },
+  "caveats": [
+    "One seed and three fine-tuning epochs, not full retraining.",
+    "CAM holdout means disjoint diagnostic training images, not unseen model-validation data.",
+    "Selective CAM metrics omit rejected pixels and are not complete-mask mIoU.",
+    "Uncertainty pair uses raw CAM labels and valid-pixel loss reduction; clipping pair uses original CRF labels and all-pixel loss reduction.",
+    "Boundary diagnostic excludes VOC ignore transitions and covers very few pixels."
+  ],
+  "archive_sha256": "4ff68a81c91263b3913782823b0dae40fa00562139adcf1bc4fec012de5a4c3a"
+}
